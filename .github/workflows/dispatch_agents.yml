@@ -24,10 +24,7 @@ jobs:
         with:
           app-id: ${{ secrets.ISSUELAB_APP_ID }}
           private-key: ${{ secrets.ISSUELAB_APP_PRIVATE_KEY }}
-          # 如果需要访问特定仓库，可以指定：
-          # repositories: |
-          #   IssueLab
-          #   gqy22/IssueLab
+          # Token will have access to all repositories where the app is installed
 
       - name: Setup Python
         uses: actions/setup-python@v5
