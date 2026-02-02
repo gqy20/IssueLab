@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import json
 import os
 import subprocess
 import tempfile
@@ -24,6 +25,78 @@ log_file = os.environ.get("LOG_FILE")
 log_file_path = Path(log_file) if log_file else None
 setup_logging(level=log_level, log_file=log_file_path)
 logger = get_logger(__name__)
+
+
+def fetch_issue_info(issue_number: int) -> dict:
+    """
+    通过 gh 命令获取 Issue 信息
+
+    Args:
+        issue_number: Issue 编号
+
+    Returns:
+        包含 title, body, comments, comment_count 的字典
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "view", str(issue_number), "--json", "title,body,comments"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout)
+
+        # 格式化评论
+        comments_list = []
+        for comment in data.get("comments", []):
+            author = comment.get("author", {}).get("login", "unknown")
+            created_at = comment.get("createdAt", "")[:10]  # 只取日期部分
+            body = comment.get("body", "")
+            comments_list.append(f"- **[{author}]** ({created_at}):\n{body}")
+
+        return {
+            "title": data.get("title", ""),
+            "body": data.get("body", ""),
+            "comments": "\n\n".join(comments_list),
+            "comment_count": len(data.get("comments", [])),
+        }
+    except subprocess.CalledProcessError as e:
+        logger.error(f"获取 Issue #{issue_number} 信息失败: {e.stderr}")
+        return {"title": "", "body": "", "comments": "", "comment_count": 0}
+    except json.JSONDecodeError as e:
+        logger.error(f"解析 Issue #{issue_number} JSON 失败: {e}")
+        return {"title": "", "body": "", "comments": "", "comment_count": 0}
+
+
+def parse_agents_arg(agents_str: str) -> list[str]:
+    """
+    解析 agents 参数，支持多种格式
+
+    Args:
+        agents_str: agents 字符串，支持:
+            - 逗号分隔: "echo,test"
+            - 空格分隔: "echo test"
+            - JSON 数组: '["echo", "test"]'
+
+    Returns:
+        agent 名称列表（小写）
+    """
+    agents_str = agents_str.strip()
+
+    # JSON 数组格式
+    if agents_str.startswith("[") and agents_str.endswith("]"):
+        try:
+            agents = json.loads(agents_str)
+            return [agent.lower() for agent in agents]
+        except json.JSONDecodeError:
+            logger.warning(f"JSON 格式解析失败，尝试其他格式: {agents_str}")
+
+    # 逗号分隔格式（优先）
+    if "," in agents_str:
+        return [a.strip().lower() for a in agents_str.split(",") if a.strip()]
+
+    # 空格分隔格式
+    return [a.lower() for a in agents_str.split() if a]
 
 
 def truncate_text(text: str, max_length: int = MAX_COMMENT_LENGTH) -> str:
@@ -79,32 +152,20 @@ def main():
     parser = argparse.ArgumentParser(description="Issue Lab Agent")
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
 
-    # @mention 并行执行
+    # @mention 并行执行（简化版）
     execute_parser = subparsers.add_parser("execute", help="并行执行代理")
-    execute_parser.add_argument("--issue", type=int, required=True)
-    execute_parser.add_argument("--agents", type=str, required=True, help="空格分隔的代理名称")
+    execute_parser.add_argument("--issue", type=int, required=True, help="Issue 编号")
+    execute_parser.add_argument("--agents", type=str, required=True, help="代理名称（逗号分隔）")
     execute_parser.add_argument("--post", action="store_true", help="自动发布结果到 Issue")
-    execute_parser.add_argument("--context", type=str, default="", help="Issue 内容上下文")
-    execute_parser.add_argument("--title", type=str, default="", help="Issue 标题")
-    execute_parser.add_argument("--comments", type=str, default="", help="Issue 所有评论内容")
-    execute_parser.add_argument("--comment-count", type=int, default=0, help="评论数量")
 
-    # 顺序评审流程
+    # 顺序评审流程（简化版）
     review_parser = subparsers.add_parser("review", help="运行顺序评审流程")
-    review_parser.add_argument("--issue", type=int, required=True)
+    review_parser.add_argument("--issue", type=int, required=True, help="Issue 编号")
     review_parser.add_argument("--post", action="store_true", help="自动发布结果到 Issue")
-    review_parser.add_argument("--context", type=str, default="", help="Issue 内容上下文")
-    review_parser.add_argument("--title", type=str, default="", help="Issue 标题")
-    review_parser.add_argument("--comments", type=str, default="", help="Issue 所有评论内容")
-    review_parser.add_argument("--comment-count", type=int, default=0, help="评论数量")
 
-    # Observer 监控命令
+    # Observer 监控命令（简化版）
     observe_parser = subparsers.add_parser("observe", help="运行 Observer Agent 分析 Issue")
     observe_parser.add_argument("--issue", type=int, required=True, help="Issue 编号")
-    observe_parser.add_argument("--context", type=str, default="", help="Issue 内容上下文")
-    observe_parser.add_argument("--title", type=str, default="", help="Issue 标题")
-    observe_parser.add_argument("--comments", type=str, default="", help="Issue 所有评论内容")
-    observe_parser.add_argument("--comment-count", type=int, default=0, help="评论数量")
     observe_parser.add_argument("--post", action="store_true", help="自动发布触发评论到 Issue")
 
     # Observer 批量分析命令（并行）
@@ -117,47 +178,34 @@ def main():
 
     args = parser.parse_args()
 
-    # 根据命令类型处理
-    if args.command == "execute" or args.command == "review" or args.command == "observe":
-        # 构建上下文
-        context = ""
-        if getattr(args, "context", ""):
-            title = getattr(args, "title", "") or ""
-            context = f"**Issue 标题**: {title}\n\n**Issue 内容**:\n{args.context}"
+    # 自动获取 Issue 信息（适用于 execute, review, observe）
+    if args.command in ("execute", "review", "observe"):
+        print(f"📥 正在获取 Issue #{args.issue} 信息...")
+        issue_info = fetch_issue_info(args.issue)
 
-        # 如果有评论，添加到上下文
-        comment_count = getattr(args, "comment_count", 0) or 0
-        comments = getattr(args, "comments", "") or ""
+        # 构建上下文
+        context = f"**Issue 标题**: {issue_info['title']}\n\n**Issue 内容**:\n{issue_info['body']}"
+        comment_count = issue_info["comment_count"]
+        comments = issue_info["comments"]
+
         if comment_count > 0 and comments:
             context += f"\n\n**本 Issue 共有 {comment_count} 条历史评论，请仔细阅读并分析：**\n\n{comments}"
+
+        print(f"✅ 已获取: 标题={issue_info['title'][:30]}..., 评论数={comment_count}")
     else:
         context = ""
         comment_count = 0
         comments = ""
+        issue_info = {}
 
     if args.command == "execute":
-        # 支持 JSON 数组格式 ["agent1", "agent2"] 或空格分隔格式 "agent1 agent2"
-        import json
+        agents = parse_agents_arg(args.agents)
 
-        agents_str = args.agents.strip()
-        if agents_str.startswith("[") and agents_str.endswith("]"):
-            # JSON 数组格式
-            try:
-                agents = json.loads(agents_str)
-                # 转为小写
-                agents = [agent.lower() for agent in agents]
-            except json.JSONDecodeError:
-                print(f"Error: Invalid JSON format for agents: {agents_str}")
-                return 1
-        else:
-            # 空格分隔格式
-            agents = agents_str.split()
+        if not agents:
+            print("❌ 未提供有效的 agent 名称")
+            return 1
 
-        print(f"执行 agents: {agents}")
-
-        # 设置日志文件
-        log_file = f"/tmp/issuelab_execute_{args.issue}.log"
-        print(f"详细日志将保存到: {log_file}")
+        print(f"🚀 执行 agents: {agents}")
 
         results = asyncio.run(run_agents_parallel(args.issue, agents, context, comment_count))
 
@@ -192,7 +240,7 @@ def main():
     elif args.command == "observe":
         # 运行 Observer Agent 分析 Issue
         result = asyncio.run(
-            run_observer(args.issue, getattr(args, "title", "") or "", args.context or "", comments or "")
+            run_observer(args.issue, issue_info.get("title", ""), issue_info.get("body", ""), comments)
         )
 
         print(f"\n=== Observer Analysis for Issue #{args.issue} ===")
@@ -266,9 +314,9 @@ def main():
         results = asyncio.run(run_observer_batch(issue_data_list))
 
         # 输出结果
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"分析完成：{len(results)} 个 Issues")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         triggered_count = 0
         for result in results:

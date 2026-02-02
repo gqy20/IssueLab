@@ -19,7 +19,7 @@ def setup_logging(
         配置好的 logger
     """
     if format_string is None:
-        format_string = "%(asctime)s - %(name)s - %(levelname)s - " "[%(filename)s:%(lineno)d] - %(message)s"
+        format_string = "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s"
 
     # 配置根 logger
     root_logger = logging.getLogger()

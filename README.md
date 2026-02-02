@@ -63,7 +63,18 @@
 
 ```bash
 uv sync
+
+# 执行单个 agent（自动获取 Issue 信息）
 uv run python -m issuelab execute --issue 1 --agents moderator
+
+# 执行多个 agents（逗号分隔）
+uv run python -m issuelab execute --issue 1 --agents "echo,test" --post
+
+# 运行完整评审流程
+uv run python -m issuelab review --issue 1 --post
+
+# 列出所有可用 agents
+uv run python -m issuelab list-agents
 ```
 
 ---

@@ -58,7 +58,8 @@ def write_github_output(mentions: list[str]) -> None:
 
     try:
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"mentions={json.dumps(mentions)}\n")
+            # 使用逗号分隔格式，避免 shell 引号问题
+            f.write(f"mentions={','.join(mentions)}\n")
             f.write(f"count={len(mentions)}\n")
     except OSError as e:
         print(f"Warning: Failed to write GitHub output: {e}", file=sys.stderr)
@@ -77,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Parse @mentions from GitHub Issue/Comment")
     parser.add_argument("--issue-body", help="Issue body text", default="")
     parser.add_argument("--comment-body", help="Comment body text", default="")
-    parser.add_argument("--output", default="json", choices=["json", "text"], help="Output format (default: json)")
+    parser.add_argument("--output", default="csv", choices=["json", "csv", "text"], help="Output format (default: csv)")
 
     args = parser.parse_args(argv)
 
@@ -94,6 +95,9 @@ def main(argv: list[str] | None = None) -> int:
     # 输出
     if args.output == "json":
         print(json.dumps({"mentions": mentions, "count": len(mentions)}))
+    elif args.output == "csv":
+        # 逗号分隔格式，适合 shell 使用
+        print(",".join(mentions))
     else:  # text
         for mention in mentions:
             print(mention)

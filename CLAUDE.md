@@ -28,8 +28,8 @@ uv run mypy src/issuelab --ignore-missing-imports
 # Build package
 uv build
 
-# CLI commands
-uv run python -m issuelab execute --issue 1 --agents "moderator reviewer_a" --post
+# CLI commands (简化版 - 自动获取 Issue 信息)
+uv run python -m issuelab execute --issue 1 --agents "moderator,reviewer_a" --post
 uv run python -m issuelab review --issue 1 --post
 uv run python -m issuelab observe --issue 1 --post
 uv run python -m issuelab list-agents

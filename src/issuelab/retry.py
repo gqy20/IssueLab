@@ -51,8 +51,7 @@ async def retry_async(
 
             if attempt < max_retries:
                 logger.warning(
-                    f"尝试 {attempt + 1}/{max_retries + 1} 失败: {type(e).__name__}: {e}. "
-                    f"将在 {delay:.1f}秒 后重试..."
+                    f"尝试 {attempt + 1}/{max_retries + 1} 失败: {type(e).__name__}: {e}. 将在 {delay:.1f}秒 后重试..."
                 )
                 await asyncio.sleep(delay)
                 delay *= backoff_factor

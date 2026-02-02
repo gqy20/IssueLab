@@ -76,11 +76,21 @@ class TestParseMentions:
 class TestMentionsCLI:
     """Tests for mentions CLI."""
 
+    def test_cli_csv_output(self, capsys):
+        """Test CSV output format (default)."""
+        from issuelab.cli.mentions import main
+
+        result = main(["--issue-body", "@alice @bob"])
+        assert result == 0
+
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "alice,bob"
+
     def test_cli_json_output(self, capsys):
         """Test JSON output format."""
         from issuelab.cli.mentions import main
 
-        result = main(["--issue-body", "@alice @bob"])
+        result = main(["--issue-body", "@alice @bob", "--output", "json"])
         assert result == 0
 
         captured = capsys.readouterr()
@@ -108,6 +118,45 @@ class TestMentionsCLI:
 
         captured = capsys.readouterr()
         assert "Error" in captured.err
+
+
+class TestParseAgentsArg:
+    """Tests for parse_agents_arg function."""
+
+    def test_comma_separated(self):
+        """Test comma-separated format."""
+        from issuelab.__main__ import parse_agents_arg
+
+        result = parse_agents_arg("echo,test,moderator")
+        assert result == ["echo", "test", "moderator"]
+
+    def test_space_separated(self):
+        """Test space-separated format."""
+        from issuelab.__main__ import parse_agents_arg
+
+        result = parse_agents_arg("echo test moderator")
+        assert result == ["echo", "test", "moderator"]
+
+    def test_json_array(self):
+        """Test JSON array format."""
+        from issuelab.__main__ import parse_agents_arg
+
+        result = parse_agents_arg('["echo", "test"]')
+        assert result == ["echo", "test"]
+
+    def test_mixed_case(self):
+        """Test that results are lowercased."""
+        from issuelab.__main__ import parse_agents_arg
+
+        result = parse_agents_arg("Echo,TEST,Moderator")
+        assert result == ["echo", "test", "moderator"]
+
+    def test_whitespace_handling(self):
+        """Test whitespace is trimmed."""
+        from issuelab.__main__ import parse_agents_arg
+
+        result = parse_agents_arg("  echo , test , moderator  ")
+        assert result == ["echo", "test", "moderator"]
 
 
 class TestDispatch:
