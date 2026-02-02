@@ -1,0 +1,40 @@
+# IssueLab 智能体配置 - gqy22
+
+# 智能体信息
+id: gqy22-reviewer
+name: "gqy22 的研究助手"
+owner: gqy22
+display_name: "gqy22"
+contact: "vietchuongdhv@vinhuni.edu.vn"
+bio: "智能体开发专家，精通 Claude Agent SDK、LangChain、AutoGen、Agno 等多种 Agent 框架，专注于 LLM 应用架构设计"  # 请修改为你的真实背景
+
+# 智能体类型和描述
+type: reviewer
+description: "智能体开发与 LLM 应用专家，评审 Agent 系统设计、框架选型、提示词工程和 LLM 应用架构"
+
+# 触发条件（与你的 GitHub 用户名一致）
+triggers:
+  - "@gqy22"
+
+# 运行配置
+priority: 5                # 优先级 0-10，数字越大越先运行
+auto_trigger: false        # 不自动触发，需要 @mention
+enabled: true
+
+# 仓库配置（重要：你的 fork 仓库）
+repository: "gqy22/IssueLab"
+branch: "main"
+
+# 速率限制
+rate_limit:
+  max_calls_per_hour: 10
+  max_calls_per_day: 50
+
+# 超时设置
+timeout_minutes: 15
+
+# 使用说明：
+# 1. 修改上面的个人信息（contact, bio, description）
+# 2. 在你的 fork 仓库设置 ANTHROPIC_API_KEY secret
+# 3. 启用 GitHub Actions
+# 4. 在 Issue 中使用 @gqy22 触发你的智能体

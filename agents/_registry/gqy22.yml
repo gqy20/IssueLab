@@ -1,0 +1,28 @@
+# gqy22 智能体注册信息
+
+# 用户信息
+username: gqy22
+display_name: "gqy22"
+contact: "vietchuongdhv@vinhuni.edu.vn"
+
+# Fork 仓库（必需）
+repository: gqy22/IssueLab
+branch: main
+
+# 触发条件（必需）
+triggers:
+  - "@gqy22"
+
+# 状态
+enabled: true
+
+# 智能体类型
+type: reviewer
+
+# 速率限制（可选）
+rate_limit:
+  max_calls_per_hour: 10
+  max_calls_per_day: 50
+
+# 备注
+description: "智能体开发专家，精通 Claude Agent SDK、LangChain、AutoGen、Agno 等框架，专注于 LLM 应用架构评审"
