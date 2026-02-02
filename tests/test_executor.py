@@ -1,7 +1,6 @@
 """测试并行执行器"""
 import pytest
-from unittest.mock import patch, MagicMock
-from issuelab.executor import load_prompt
+from issuelab.sdk_executor import load_prompt
 
 
 def test_load_prompt_unknown_agent():

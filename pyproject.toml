@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "AI 辅助科研评审系统"
 requires-python = ">=3.13"
 dependencies = [
-    "anthropic>=0.28.0",
     "claude-agent-sdk>=0.1.27",
 ]
 
