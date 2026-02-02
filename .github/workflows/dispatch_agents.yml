@@ -52,7 +52,7 @@ jobs:
 
       - name: Dispatch to user repositories
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 使用单引号包裹 JSON 以避免 bash 解析问题
           mentions='${{ steps.parse_issue.outputs.mentions || steps.parse_comment.outputs.mentions }}'
