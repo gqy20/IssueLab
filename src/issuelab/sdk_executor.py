@@ -364,7 +364,7 @@ async def run_observer_batch(issue_data_list: list[dict]) -> list[dict]:
         分析结果列表，每个元素包含 issue_number 和决策结果
     """
     logger.info(f"开始并行分析 {len(issue_data_list)} 个 Issues")
-    
+
     results = []
     async with anyio.create_task_group() as tg:
 
@@ -382,11 +382,13 @@ async def run_observer_batch(issue_data_list: list[dict]) -> list[dict]:
                 logger.info(f"Issue #{issue_number} 分析完成: should_trigger={result.get('should_trigger')}")
             except Exception as e:
                 logger.error(f"Issue #{issue_number} 分析失败: {e}", exc_info=True)
-                results.append({
-                    "issue_number": issue_number,
-                    "should_trigger": False,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "issue_number": issue_number,
+                        "should_trigger": False,
+                        "error": str(e),
+                    }
+                )
 
         for issue_data in issue_data_list:
             tg.start_soon(analyze_one, issue_data)

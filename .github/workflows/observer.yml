@@ -51,7 +51,7 @@ jobs:
           # 读取 issue 编号并转为逗号分隔
           ISSUE_NUMBERS=$(cat /tmp/issue_numbers.txt | tr '\n' ',' | sed 's/,$//')
           ISSUE_COUNT=$(wc -l < /tmp/issue_numbers.txt)
-          
+
           echo "找到 $ISSUE_COUNT 个待观察的 issues: $ISSUE_NUMBERS"
           echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
           echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
@@ -62,12 +62,12 @@ jobs:
         if: steps.get_issues.outputs.issue_count > 0
         run: |
           echo "=== 并行分析 ${{ steps.get_issues.outputs.issue_count }} 个 Issues ==="
-          
+
           # 使用新的批处理命令
           uv run python -m issuelab observe-batch \
             --issues "${{ steps.get_issues.outputs.issue_numbers }}" \
             --post
-          
+
           echo "=== 分析完成 ==="
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

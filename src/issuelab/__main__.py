@@ -13,7 +13,6 @@ from issuelab.sdk_executor import (
     get_agent_matrix_markdown,
     run_agents_parallel,
     run_observer,
-    run_observer_batch,
 )
 
 # 评论最大长度 (GitHub 限制 65536，实际使用 10000 留余量)
@@ -194,13 +193,13 @@ def main():
     elif args.command == "observe-batch":
         # 并行分析多个 Issues
         issue_numbers = [int(i.strip()) for i in args.issues.split(",") if i.strip()]
-        
+
         if not issue_numbers:
             print("❌ 未提供有效的 Issue 编号")
             return
-        
+
         print(f"\n=== 并行分析 {len(issue_numbers)} 个 Issues ===")
-        
+
         # 获取所有 Issues 的详情
         issue_data_list = []
         for issue_num in issue_numbers:
@@ -213,66 +212,70 @@ def main():
                     check=True,
                 )
                 import json
+
                 data = json.loads(result.stdout)
-                
+
                 # 格式化评论
                 comments = []
                 for comment in data.get("comments", []):
                     author = comment.get("author", {}).get("login", "unknown")
                     body = comment.get("body", "")
                     comments.append(f"- **[{author}]**: {body}")
-                
-                issue_data_list.append({
-                    "issue_number": issue_num,
-                    "issue_title": data.get("title", ""),
-                    "issue_body": data.get("body", ""),
-                    "comments": "\n".join(comments),
-                })
+
+                issue_data_list.append(
+                    {
+                        "issue_number": issue_num,
+                        "issue_title": data.get("title", ""),
+                        "issue_body": data.get("body", ""),
+                        "comments": "\n".join(comments),
+                    }
+                )
             except Exception as e:
                 print(f"⚠️  获取 Issue #{issue_num} 失败: {e}")
                 continue
-        
+
         if not issue_data_list:
             print("❌ 无有效的 Issue 数据")
             return
-        
+
         # 并行分析
         from issuelab.sdk_executor import run_observer_batch
+
         results = asyncio.run(run_observer_batch(issue_data_list))
-        
+
         # 输出结果
         print(f"\n{'='*60}")
         print(f"分析完成：{len(results)} 个 Issues")
         print(f"{'='*60}\n")
-        
+
         triggered_count = 0
         for result in results:
             issue_num = result.get("issue_number")
             should_trigger = result.get("should_trigger", False)
-            
+
             print(f"Issue #{issue_num}:")
             print(f"  触发: {'✅ 是' if should_trigger else '❌ 否'}")
-            
+
             if should_trigger:
                 triggered_count += 1
                 print(f"  Agent: {result.get('agent', 'N/A')}")
                 print(f"  理由: {result.get('reason', 'N/A')}")
-                
+
                 # 如果需要，自动发布触发评论
                 if getattr(args, "post", False):
                     comment = result.get("comment")
                     if comment and post_comment(issue_num, comment):
-                        print(f"  ✅ 已发布触发评论")
+                        print("  ✅ 已发布触发评论")
                     else:
-                        print(f"  ❌ 发布评论失败")
+                        print("  ❌ 发布评论失败")
             else:
                 print(f"  原因: {result.get('reason', 'N/A')}")
-            
+
             if "error" in result:
                 print(f"  ⚠️  错误: {result['error']}")
-            
+
             print()
-        
+
         print(f"\n总结: {triggered_count}/{len(results)} 个 Issues 需要触发 Agent")
 
     elif args.command == "list-agents":
