@@ -25,6 +25,7 @@ jobs:
         with:
           app-id: ${{ secrets.ISSUELAB_APP_ID }}
           private-key: ${{ secrets.ISSUELAB_APP_PRIVATE_KEY }}
+          owner: gqy22 # 临时强制指定 owner 为 gqy22 进行测试
           # Token will have access to all repositories where the app is installed
 
       - name: Setup Python
