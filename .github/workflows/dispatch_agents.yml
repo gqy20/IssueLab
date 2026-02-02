@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write  # 需要触发其他仓库的 workflows
 
 jobs:
   dispatch:

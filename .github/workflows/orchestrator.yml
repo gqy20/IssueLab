@@ -90,43 +90,11 @@ jobs:
       - name: Install arxiv-mcp-server
         run: uv tool install arxiv-mcp-server
 
-      - name: Parse @mentions
-        id: parse
+      - name: Skip - @mentions handled by dispatch_agents.yml
         run: |
-          # 使用已安装的 issuelab 包，避免双层包装
-          mentions=$(uv run python -m issuelab.cli.mentions \
-            --comment-body "${{ github.event.comment.body }}" \
-            --output csv)
-          echo "mentions=$mentions" >> $GITHUB_OUTPUT
-          echo "📝 Parsed mentions: $mentions"
-
-      - name: Run agents
-        if: steps.parse.outputs.mentions != ''
-        run: |
-          echo "🚀 执行 agents: ${{ steps.parse.outputs.mentions }}"
-          mkdir -p ${{ github.workspace }}/logs
-          uv run python -m issuelab execute \
-            --issue ${{ github.event.issue.number }} \
-            --agents "${{ steps.parse.outputs.mentions }}" \
-            --post
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_AUTH_KEY: ${{ secrets.ANTHROPIC_AUTH_KEY }}
-          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
-          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
-          ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          LOG_FILE: ${{ github.workspace }}/logs/execute_${{ github.event.issue.number }}.log
-          LOG_LEVEL: DEBUG
-          ENABLE_ARXIV_MCP: true
-          ENABLE_GITHUB_MCP: false
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-logs-${{ github.event.issue.number }}-${{ github.run_number }}
-          path: ${{ github.workspace }}/logs/
-          retention-days: 7
+          echo "ℹ️ @mention 触发由 dispatch_agents.yml 处理"
+          echo "   本 workflow 仅处理系统命令：/review, /summarize, /triage 等"
+          echo "   @mentions 会自动 dispatch 到对应用户的仓库执行"
 
   # ========== /command 触发（顺序执行） ==========
   process-command:
