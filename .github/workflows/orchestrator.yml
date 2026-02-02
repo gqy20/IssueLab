@@ -103,7 +103,7 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能
 
   # ========== @mention 触发（并行执行） ==========
@@ -132,11 +132,9 @@ jobs:
       - name: Parse @mentions
         id: parse
         run: |
-          COMMENT="${{ github.event.comment.body }}"
-          # 提取 @mention 并转为小写
-          MENTIONS=$(echo "$COMMENT" | grep -o '@[a-zA-Z_]*' | sed 's/@//' | tr '[:upper:]' '[:lower:]' | tr '\n' ' ')
-          echo "mentions=$MENTIONS" >> $GITHUB_OUTPUT
-          echo "解析到 mentions: $MENTIONS"
+          python scripts/parse_mentions.py \
+            --comment-body "${{ github.event.comment.body }}" \
+            --output json
 
       - name: Get Issue content
         id: get_issue
@@ -194,7 +192,7 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能
 
   # ========== /command 触发（顺序执行） ==========
@@ -299,7 +297,7 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能
 
       # 处理 /review 命令：运行完整评审流程
@@ -331,7 +329,7 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能
 
       # 处理 /summarize 命令
@@ -352,5 +350,5 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能

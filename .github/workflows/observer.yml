@@ -75,6 +75,6 @@ jobs:
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
           ARXIV_STORAGE_PATH: ${{ github.workspace }}/.arxiv-papers
-          ENABLE_ARXIV_MCP: false  # 暂时关闭以测试性能
+          ENABLE_ARXIV_MCP: true  # 已修复 MCP 超时问题
           ENABLE_GITHUB_MCP: false  # 暂时关闭以测试性能
           LOG_LEVEL: INFO
