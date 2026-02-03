@@ -168,7 +168,7 @@ def build_papers_for_observer(papers: list[dict]) -> str:
 
 
 async def run_observer_for_papers(papers: list[dict]) -> list[dict]:
-    """运行 Observer Agent 分析 arXiv 论文列表
+    """运行 arxiv_observer 分析 arXiv 论文列表
 
     Args:
         papers: 论文列表，每个论文包含:
@@ -182,18 +182,17 @@ async def run_observer_for_papers(papers: list[dict]) -> list[dict]:
         return []
 
     agents = discover_agents()
-    observer_config = agents.get("observer", {})
+    arxiv_observer_config = agents.get("arxiv_observer", {})
 
-    if not observer_config:
-        logger.error("Observer agent not found")
+    if not arxiv_observer_config:
+        logger.error("arxiv_observer agent not found")
         return []
 
     # 构建论文上下文
     papers_context = build_papers_for_observer(papers)
-    agent_matrix = get_agent_matrix_markdown()
 
     # 获取 prompt（移除 frontmatter）
-    prompt_template = observer_config["prompt"]
+    prompt_template = arxiv_observer_config["prompt"]
     lines = prompt_template.split("\n")
     content_lines = []
     in_frontmatter = False
@@ -205,42 +204,17 @@ async def run_observer_for_papers(papers: list[dict]) -> list[dict]:
             content_lines.append(line)
     prompt = "\n".join(content_lines)
 
-    # arXiv 论文分析模式任务说明
-    arxiv_task = """请分析下方的 arXiv 论文候选列表，推荐值得讨论的论文。
-
-**分析要求**：
-- 每批论文最多推荐 2-3 篇
-- 优先选择不同方向的论文，避免主题重复
-- 优先选择热门方向（LLM、CV、NLP）、创新性强、时效性高的论文
-
-**输出格式**：请直接输出 YAML 代码块，包含 analysis 和 recommended 字段"""
-
-    # Issue 分析模式任务说明
-    issue_task = """请分析以下 GitHub Issue 并决定是否需要触发其他 Agent：
-
-**Issue 编号**: __ISSUE_NUMBER__
-
-**Issue 标题**: __ISSUE_TITLE__
-
-**Issue 内容**:
-__ISSUE_BODY__
-
-**历史评论**:
-__COMMENTS__"""
-
-    # 使用唯一的占位符标记替换
-    prompt = prompt.replace("__AGENT_MATRIX__", agent_matrix)
+    # 替换占位符
     prompt = prompt.replace("__PAPERS_CONTEXT__", papers_context)
-    prompt = prompt.replace("__TASK_SECTION__", arxiv_task)
 
-    logger.info(f"[Observer] 开始分析 {len(papers)} 篇候选论文")
+    logger.info(f"[arxiv_observer] 开始分析 {len(papers)} 篇候选论文")
 
-    # 调用 agent
-    result = await run_single_agent(prompt, "observer")
+    # 调用 arxiv_observer agent
+    result = await run_single_agent(prompt, "arxiv_observer")
 
     # 解析响应
     response_text = result.get("response", "")
-    logger.debug(f"[Observer] 响应长度: {len(response_text)} 字符")
+    logger.debug(f"[arxiv_observer] 响应长度: {len(response_text)} 字符")
 
     # 解析推荐结果
     recommended_indices = parse_papers_recommendation(response_text, len(papers))
@@ -255,5 +229,5 @@ __COMMENTS__"""
             paper["summary"] = item.get("summary", paper.get("summary", ""))
             recommended_papers.append(paper)
 
-    logger.info(f"[Observer] 推荐 {len(recommended_papers)} 篇论文")
+    logger.info(f"[arxiv_observer] 推荐 {len(recommended_papers)} 篇论文")
     return recommended_papers
