@@ -31,8 +31,8 @@ def setup_logging(
     # 创建格式化器
     formatter = logging.Formatter(format_string)
 
-    # 控制台处理器
-    console_handler = logging.StreamHandler(sys.stdout)
+    # 控制台处理器 - 输出到stderr以避免与JSON输出混淆
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(logging.DEBUG)  # 改为 DEBUG 级别以显示完整日志
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
