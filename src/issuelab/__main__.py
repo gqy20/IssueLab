@@ -199,6 +199,17 @@ def main():
                 else:
                     print(f"[ERROR] Failed to post {agent_name} response")
 
+            # 如果是 summarator，检查是否需要自动关闭
+            if agent_name == "summarizer":
+                from issuelab.response_processor import should_auto_close, close_issue
+
+                if should_auto_close(response, agent_name):
+                    print(f"\n[INFO] 检测到 [CLOSE] 标记，正在自动关闭 Issue #{args.issue}...")
+                    if close_issue(args.issue):
+                        print(f"[OK] Issue #{args.issue} 已自动关闭")
+                    else:
+                        print(f"[ERROR] 自动关闭失败")
+
     elif args.command == "observe":
         # 运行 Observer Agent 分析 Issue
         result = asyncio.run(

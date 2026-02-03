@@ -86,6 +86,19 @@ trigger_conditions:
 **基于**: Issue #$NUMBER 及 $COUNT 条人工评论（不含机器人评论）
 ```
 
+## 自动关闭标记
+
+如果 Issue 已经得到解决，可以在总结末尾添加 `[CLOSE]` 标记，agent 会自动关闭此 Issue：
+
+```markdown
+...
+
+**摘要生成者**: Claude Agent (Summarizer)
+**基于**: Issue #$NUMBER 及 $COUNT 条人工评论（不含机器人评论）
+
+[CLOSE]
+```
+
 ## 注意事项
 
 - 若讨论仍在进行中，标注"待续"

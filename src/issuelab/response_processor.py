@@ -7,7 +7,9 @@ Agent Response 后处理：解析 @mentions 并触发 dispatch
 """
 
 import logging
+import os
 import re
+import subprocess
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -139,3 +141,56 @@ def process_agent_response(
         )
 
     return result
+
+
+def should_auto_close(response_text: str, agent_name: str) -> bool:
+    """
+    检查是否应该自动关闭Issue
+
+    规则：
+    - 仅限 summarizer 可触发自动关闭
+    - 响应中必须包含 [CLOSE] 标记
+
+    Args:
+        response_text: Agent的response内容
+        agent_name: Agent名称
+
+    Returns:
+        是否应该关闭
+    """
+    if agent_name != "summarizer":
+        return False
+
+    if not response_text:
+        return False
+
+    # 检测 [CLOSE] 标记
+    return "[CLOSE]" in response_text
+
+
+def close_issue(issue_number: int) -> bool:
+    """
+    关闭 Issue
+
+    Args:
+        issue_number: Issue编号
+
+    Returns:
+        是否成功关闭
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "close", str(issue_number), "--repo", os.environ.get("GITHUB_REPOSITORY", ""), "--reason", "completed"],
+            capture_output=True,
+            text=True,
+            env=os.environ.copy(),
+        )
+        if result.returncode == 0:
+            logger.info(f"[OK] Issue #{issue_number} 已自动关闭")
+            return True
+        else:
+            logger.error(f"[ERROR] 关闭 Issue #{issue_number} 失败: {result.stderr}")
+            return False
+    except Exception as e:
+        logger.error(f"[ERROR] 关闭 Issue #{issue_number} 异常: {e}")
+        return False

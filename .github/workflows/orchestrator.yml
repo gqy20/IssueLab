@@ -332,6 +332,21 @@ jobs:
           ACTIONS_STEP_DEBUG: "true"
           ACTIONS_RUNNER_DEBUG: "true"
 
+      - name: Check for auto-close
+        if: always()
+        run: |
+          # 检查评论中是否包含 [CLOSE] 标记
+          LAST_COMMENT=$(gh issue comments ${{ github.event.issue.number }} --repo ${{ github.repository }} --limit 1 --json body -q '.[0].body' 2>/dev/null || echo "")
+          if echo "$LAST_COMMENT" | grep -q '\[CLOSE\]'; then
+            echo "[INFO] 检测到 [CLOSE] 标记，正在关闭 Issue..."
+            gh issue close ${{ github.event.issue.number }} --repo ${{ github.repository }} --reason "completed"
+            echo "[OK] Issue 已自动关闭"
+          else
+            echo "[INFO] 未检测到 [CLOSE] 标记，不自动关闭"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
