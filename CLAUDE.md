@@ -129,7 +129,7 @@ trigger_conditions:
 
 | Variable | Purpose | Required |
 |----------|---------|----------|
-| `ANTHROPIC_API_KEY` | Anthropic API | Yes |
+| `ANTHROPIC_API_TOKEN` | Anthropic API | Yes |
 | `GITHUB_TOKEN` / `GH_TOKEN` | GitHub authentication | Yes |
 | `ANTHROPIC_MODEL` | Model name | No (default: sonnet) |
 | `ANTHROPIC_BASE_URL` | API base URL (for proxies) | No |
@@ -148,7 +148,7 @@ Cross-repository agent execution via GitHub App:
 - **DISPATCH_TOKEN:** Fine-grained PAT in main repo for triggering user forks
 
 **User fork requirements:**
-- `ANTHROPIC_API_KEY` - User's Claude API key in fork secrets
+- `ANTHROPIC_API_TOKEN` - User's Claude API key in fork secrets
 - `.github/workflows/user_agent.yml` - Receives dispatch events
 - `agents/<username>/prompt.md` - Custom agent prompt
 

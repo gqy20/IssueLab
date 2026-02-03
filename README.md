@@ -88,7 +88,7 @@ uv run python -m issuelab list-agents
 
 1. Fork 项目到个人账号
 2. 修改 `prompts/*.md` 定制 Agent 行为
-3. 配置 `ANTHROPIC_API_KEY`
+3. 配置 `ANTHROPIC_API_TOKEN`
 4. 提交 Issue，你的 AI 代理开始工作
 
 ---

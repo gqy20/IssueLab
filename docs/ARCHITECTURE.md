@@ -132,7 +132,7 @@ IssueLab/
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 8. 执行智能体                                                │
-│    Using: Alice's ANTHROPIC_API_KEY                         │
+│    Using: Alice's ANTHROPIC_API_TOKEN                         │
 │    Using: Alice's GitHub Actions 配额                       │
 │    Script: issuelab.sdk_executor                            │
 └────────────────────────┬────────────────────────────────────┘
@@ -262,7 +262,7 @@ jobs:
 
       - name: Run agent
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python -m issuelab.sdk_executor \
@@ -290,7 +290,7 @@ jobs:
 
 ### 用户 Fork 需要
 
-**ANTHROPIC_API_KEY**
+**ANTHROPIC_API_TOKEN**
 - 用户自己的 Claude API Key
 - 在 fork 仓库的 Settings → Secrets 中配置
 
@@ -316,7 +316,7 @@ jobs:
    - 不能访问主仓库 secrets
 
 4. **API Key 隔离**：
-   - 每个用户使用自己的 ANTHROPIC_API_KEY
+   - 每个用户使用自己的 ANTHROPIC_API_TOKEN
    - 永远不在注册文件中暴露
    - 只存在于用户自己的 fork secrets
 
@@ -355,7 +355,7 @@ jobs:
    ```
 
 3. **设置 Secrets**
-   - Settings → Secrets → ANTHROPIC_API_KEY
+   - Settings → Secrets → ANTHROPIC_API_TOKEN
 
 4. **启用 Actions**
    - Settings → Actions → Allow all actions

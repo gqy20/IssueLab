@@ -133,7 +133,7 @@ repository: "YOUR_GITHUB_ID/IssueLab"
 
 在你的 fork 仓库设置中：
 1. **Settings** → **Secrets and variables** → **Actions**
-2. 添加 `ANTHROPIC_API_KEY`（你的 Claude API Key）
+2. 添加 `ANTHROPIC_API_TOKEN`（你的 Claude API Key）
 3. **Settings** → **Actions** → **General**
 4. 选择 "Allow all actions and reusable workflows"
 
@@ -265,7 +265,7 @@ enabled: true
 2. 主仓库 Actions 读取 `_registry/alice.yml`
 3. 向 `alice/IssueLab` 发送 repository_dispatch
 4. Alice fork 的 Actions 自动运行
-5. 使用 Alice 的 ANTHROPIC_API_KEY
+5. 使用 Alice 的 ANTHROPIC_API_TOKEN
 6. 结果回传到主仓库
 
 **完全透明：**

@@ -625,7 +625,7 @@ jobs:
           echo "=== 评审完成 ==="
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
 
   # ========== @mention 触发（并行执行） ==========
   process-mention:
@@ -667,7 +667,7 @@ jobs:
             --agents "${{ steps.parse.outputs.mentions }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
 
   # ========== /command 触发（顺序执行） ==========
   process-command:
@@ -726,7 +726,7 @@ jobs:
           uv run python -m agents triage --issue ${{ github.event.issue.number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
 
       # 处理 /review 命令：运行 Moderator → ReviewerA → ReviewerB
       - name: Run review process
@@ -747,7 +747,7 @@ jobs:
           echo "=== 评审完成 ==="
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
 
       # 处理 /summarize 命令
       - name: Run summarizer
@@ -756,7 +756,7 @@ jobs:
           python -m agents.summarizer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}
 ```
 
 ### 7.2 自定义工具集（agents/tools/__init__.py）
@@ -1267,14 +1267,14 @@ gh issue edit ${{ github.event.issue.number }} \
 
 ### 9.1 环境准备
 
-部署前需要准备以下环境变量和权限。`GITHUB_TOKEN` 是 GitHub Personal Access Token，在 GitHub Actions 中默认使用 `secrets.GITHUB_TOKEN`，需要具备 issues:read、issues:write 和 contents:read 权限。`ANTHROPIC_API_KEY` 是 Anthropic API 密钥，需要配置为 GitHub Secret，用于调用 Claude 模型。
+部署前需要准备以下环境变量和权限。`GITHUB_TOKEN` 是 GitHub Personal Access Token，在 GitHub Actions 中默认使用 `secrets.GITHUB_TOKEN`，需要具备 issues:read、issues:write 和 contents:read 权限。`ANTHROPIC_API_TOKEN` 是 Anthropic API 密钥，需要配置为 GitHub Secret，用于调用 Claude 模型。
 
 ### 9.2 GitHub 仓库配置
 
 **第一步：创建 Secret**
 
 在仓库 Settings → Secrets and variables → Actions 中添加：
-- `ANTHROPIC_API_KEY`: 你的 Anthropic API 密钥
+- `ANTHROPIC_API_TOKEN`: 你的 Anthropic API 密钥
 
 **第二步：启用 Actions**
 
@@ -1299,7 +1299,7 @@ uv sync
 # 设置环境变量并运行
 export ISSUE_NUMBER=1
 export GITHUB_TOKEN=your_token
-export ANTHROPIC_API_KEY=your_key
+export ANTHROPIC_API_TOKEN=your_key
 
 uv run python -m agents
 ```
@@ -1375,7 +1375,7 @@ MVP 稳定运行后，可按以下优先级进行功能扩展。首先实现更�
 在正式投入使用前，请按以下步骤验证系统功能：
 
 ### 基础验证
-第一步，创建所有必要的 GitHub Labels（type、state、bot 四类共 12 个标签，确认包含 `state:ready-for-review`）。第二步，提交 Issue Forms 模板文件并验证 GitHub 是否正确解析。第三步，提交 `.github/workflows/orchestrator.yml` 并在 Actions 面板确认工作流已启用。第四步，配置 `ANTHROPIC_API_KEY` Secret。
+第一步，创建所有必要的 GitHub Labels（type、state、bot 四类共 12 个标签，确认包含 `state:ready-for-review`）。第二步，提交 Issue Forms 模板文件并验证 GitHub 是否正确解析。第三步，提交 `.github/workflows/orchestrator.yml` 并在 Actions 面板确认工作流已启用。第四步，配置 `ANTHROPIC_API_TOKEN` Secret。
 
 ### @mention 并行触发验证（推荐）
 第五步，创建一个测试 Issue，填写必要信息后在评论中输入 `@Moderator 请分诊，@ReviewerA 请评审，@ReviewerB 请找问题`。第六步，在 Actions 面板观察工作流运行状态，验证是否并行触发三个代理。第七步，检查三个代理是否几乎同时发布独立评论，验证并行执行效果。

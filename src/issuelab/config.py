@@ -12,9 +12,9 @@ class Config:
     def get_anthropic_api_key() -> str:
         """获取 Anthropic API Key
 
-        优先级: ANTHROPIC_API_KEY > ANTHROPIC_AUTH_TOKEN
+        优先级: ANTHROPIC_API_TOKEN > ANTHROPIC_AUTH_TOKEN
         """
-        return os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
+        return os.environ.get("ANTHROPIC_API_TOKEN") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
 
     @staticmethod
     def get_anthropic_base_url() -> str:
@@ -37,8 +37,8 @@ class Config:
 
         api_key = Config.get_anthropic_api_key()
         if api_key:
-            # 统一使用 ANTHROPIC_API_KEY
-            env["ANTHROPIC_API_KEY"] = api_key
+            # 统一使用 ANTHROPIC_API_TOKEN
+            env["ANTHROPIC_API_TOKEN"] = api_key
 
         base_url = Config.get_anthropic_base_url()
         if base_url:

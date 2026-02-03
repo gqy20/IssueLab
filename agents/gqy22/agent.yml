@@ -35,6 +35,6 @@ timeout_minutes: 15
 
 # 使用说明：
 # 1. 修改上面的个人信息（contact, bio, description）
-# 2. 在你的 fork 仓库设置 ANTHROPIC_API_KEY secret
+# 2. 在你的 fork 仓库设置 ANTHROPIC_API_TOKEN secret
 # 3. 启用 GitHub Actions
 # 4. 在 Issue 中使用 @gqy22 触发你的智能体

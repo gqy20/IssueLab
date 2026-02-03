@@ -115,7 +115,7 @@ labels_filter:                # 可选：只响应特定标签
    ↓
    读取 alice/IssueLab 的 agents/alice/agent.yml
    ↓
-   使用 Alice 自己的 ANTHROPIC_API_KEY
+   使用 Alice 自己的 ANTHROPIC_API_TOKEN
    ↓
    执行 Alice 的智能体
    ↓
@@ -184,7 +184,7 @@ jobs:
             --issue-repo ${{ github.event.client_payload.repo }} \
             --issue-number ${{ github.event.client_payload.issue_number }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # Alice 自己的
+          ANTHROPIC_API_TOKEN: ${{ secrets.ANTHROPIC_API_TOKEN }}  # Alice 自己的
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -270,7 +270,7 @@ jobs:
 
 1. Fork gqy20/IssueLab
 2. 在自己的 fork 中配置 `agents/alice/agent.yml` 和 `prompt.md`
-3. 在自己的 fork 设置 `ANTHROPIC_API_KEY` secret
+3. 在自己的 fork 设置 `ANTHROPIC_API_TOKEN` secret
 4. 创建 `agents/_registry/alice.yml` 注册文件
 5. 提交 PR 到主仓库
 6. PR 合并后，Alice 的智能体接入完成
@@ -316,7 +316,7 @@ curl -X POST \
   - 对目标仓库（alice/IssueLab）：`actions: write`
 
 **用户 fork 需要：**
-- `ANTHROPIC_API_KEY`：Claude API Key
+- `ANTHROPIC_API_TOKEN`：Claude API Key
 - `GITHUB_TOKEN`：自动提供，用于回复评论
 
 ### 安全考虑

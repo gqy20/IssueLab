@@ -29,7 +29,7 @@ vim agents/YOUR_GITHUB_ID/prompt.md
 
 在你的 fork 仓库设置中：
 - Settings → Secrets and variables → Actions
-- 添加 `ANTHROPIC_API_KEY` secret
+- 添加 `ANTHROPIC_API_TOKEN` secret
 
 ### 4. 启用 Actions
 

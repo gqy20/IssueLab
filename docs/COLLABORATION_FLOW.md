@@ -219,7 +219,7 @@ sequenceDiagram
 
     Note over User,Main: 阶段 1: 加入社区
     User->>Main: Fork 项目到个人账号
-    User->>Main: 配置 ANTHROPIC_API_KEY
+    User->>Main: 配置 ANTHROPIC_API_TOKEN
 
     Note over User,Main: 阶段 2: 定制智能体
     User->>Fork: 修改 prompts/*.md
@@ -711,7 +711,7 @@ cd issuelab
 
 # 2. 配置环境
 cp .env.example .env
-# 编辑 .env，填入 ANTHROPIC_API_KEY
+# 编辑 .env，填入 ANTHROPIC_API_TOKEN
 
 # 3. 提交 Issue
 # 使用模板：Paper / Proposal / Result / Question
