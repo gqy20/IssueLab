@@ -5,12 +5,17 @@
 选择感兴趣的话题进行参与
 """
 
+import asyncio
 import json
 import logging
+import re
 import subprocess
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# LLM智能扫描开关
+USE_LLM_SCAN = True  # True=使用LLM智能分析, False=使用关键词匹配
 
 
 def get_issue_content(issue_number: int, repo: str) -> dict[str, Any] | None:
@@ -131,6 +136,70 @@ def select_top_issues(
     return interested[:max_count]
 
 
+async def llm_select_issues_async(
+    agent_config: dict[str, Any],
+    issues_data: list[dict[str, Any]],
+    max_replies: int = 3
+) -> dict[str, Any]:
+    """使用LLM智能选择Issues（异步版本）"""
+    from claude_agent_sdk import query
+    from issuelab.agents.options import create_agent_options
+    
+    # 构建prompt
+    issues_text = "\n---\n".join([
+        f"#{i['number']}: {i.get('title', '')}\n{(i.get('body', '') or '')[:500]}"
+        for i in issues_data
+    ])
+    
+    prompt = f"""你是Issue筛选助手。根据Agent信息选择最合适的{max_replies}个Issue。
+
+## Agent信息
+- 角色: {agent_config.get('description', 'N/A')}
+- 简介: {agent_config.get('bio', 'N/A')}
+- 兴趣: {agent_config.get('interests', [])}
+
+## 候选Issues ({len(issues_data)}个)
+{issues_text}
+
+## 输出要求
+严格输出JSON（不要markdown代码块）：
+{{"selected_issues": [21], "selections": [{{"issue_number": 21, "priority": 9, "reason": "原因"}}], "reasoning": "说明"}}
+
+选择标准：主题相关、价值匹配、能提供独特见解。输出JSON："""
+
+    # 调用智能体
+    logger.info("[LLM] 调用智能体分析...")
+    response_text = ""
+    options = create_agent_options()
+    
+    async for message in query(prompt=prompt, options=options):
+        if hasattr(message, 'content'):
+            for block in message.content:
+                if hasattr(block, 'text'):
+                    response_text += block.text
+    
+    # 解析JSON
+    text = re.sub(r'```(?:json)?\s*', '', response_text)  # 去除markdown
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    
+    if not match:
+        logger.error(f"未找到JSON: {text[:200]}")
+        return {"selected_issues": [], "selections": [], "reasoning": "解析失败"}
+    
+    try:
+        result = json.loads(match.group(0))
+        logger.info(f"[LLM] 选择了 {len(result.get('selected_issues', []))} 个Issue")
+        return result
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON解析错误: {e}")
+        return {"selected_issues": [], "selections": [], "reasoning": f"错误: {e}"}
+
+
+def llm_select_issues(agent_config: dict, issues_data: list[dict], max_replies: int = 3) -> dict:
+    """使用LLM智能选择Issues（同步版本）"""
+    return asyncio.run(llm_select_issues_async(agent_config, issues_data, max_replies))
+
+
 def scan_issues_for_personal_agent(
     agent_name: str,
     agent_config: dict[str, Any],
@@ -159,56 +228,86 @@ def scan_issues_for_personal_agent(
         }
     """
     logger.info(f"🔍 开始扫描 {len(issue_numbers)} 个issues...")
-
-    candidates = []
-
+    
+    # 收集所有候选Issues
+    candidates_data = []
     for issue_num in issue_numbers:
-        # 获取issue内容
         issue_data = get_issue_content(issue_num, repo)
         if not issue_data:
             continue
-
-        # 检查是否已经评论过
+        
+        # 检查是否已评论
         if username and check_already_commented(issue_num, repo, username):
             logger.info(f"[SKIP] Issue #{issue_num} 已评论过，跳过")
             continue
-
-        # 分析兴趣度
+        
+        candidates_data.append({
+            "number": issue_num,
+            "title": issue_data.get("title", ""),
+            "body": issue_data.get("body", ""),
+            "labels": issue_data.get("labels", []),
+        })
+    
+    # 使用LLM或关键词匹配
+    if USE_LLM_SCAN and candidates_data:
+        logger.info("📊 使用LLM智能分析...")
+        try:
+            result = llm_select_issues(agent_config, candidates_data, max_replies)
+            
+            selected_numbers = result.get("selected_issues", [])
+            selected_details = result.get("selections", [])
+            
+            logger.info(f"[LLM] 选择: {selected_numbers}")
+            logger.info(f"[LLM] 理由: {result.get('reasoning', 'N/A')[:150]}...")
+            
+            return {
+                "agent_name": agent_name,
+                "total_scanned": len(candidates_data),
+                "selected_issues": selected_numbers,
+                "selected_details": selected_details,
+                "reasoning": result.get("reasoning", ""),
+                "method": "llm",
+            }
+        except Exception as e:
+            logger.error(f"[ERROR] LLM分析失败: {e}，回退到关键词匹配")
+            # 继续使用关键词匹配
+    
+    # 关键词匹配模式（原逻辑）
+    logger.info("📊 使用关键词匹配...")
+    candidates = []
+    
+    for candidate in candidates_data:
         analysis = analyze_issue_interest(
             agent_name=agent_name,
-            issue_number=issue_num,
-            issue_title=issue_data.get("title", ""),
-            issue_body=issue_data.get("body", ""),
+            issue_number=candidate["number"],
+            issue_title=candidate["title"],
+            issue_body=candidate["body"],
             agent_config=agent_config,
         )
-
-        candidates.append(
-            {
-                "issue_number": issue_num,
-                "title": issue_data.get("title", ""),
-                "interested": analysis["interested"],
-                "reason": analysis["reason"],
-                "priority": analysis["priority"],
-            }
-        )
-
+        
+        candidates.append({
+            "issue_number": candidate["number"],
+            "title": candidate["title"],
+            "interested": analysis["interested"],
+            "reason": analysis["reason"],
+            "priority": analysis["priority"],
+        })
+        
         if analysis["interested"]:
-            logger.info(
-                f"[OK] Issue #{issue_num}: {issue_data.get('title', '')} (优先级: {analysis['priority']})"
-            )
+            logger.info(f"[OK] Issue #{candidate['number']}: {candidate['title'][:50]}... (优先级: {analysis['priority']})")
         else:
-            logger.info(f"[SKIP] Issue #{issue_num}: 不感兴趣 - {analysis['reason']}")
-
-    # 选择top N
+            logger.info(f"[SKIP] Issue #{candidate['number']}: {analysis['reason']}")
+    
     selected = select_top_issues(candidates, max_replies)
     selected_numbers = [s["issue_number"] for s in selected]
-
+    
     logger.info(f"[INFO] 总扫描: {len(candidates)}, 感兴趣: {len(selected)}")
-
+    
     return {
         "agent_name": agent_name,
         "total_scanned": len(candidates),
         "candidates": candidates,
         "selected_issues": selected_numbers,
         "selected_details": selected,
+        "method": "keyword",
     }
