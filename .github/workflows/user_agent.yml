@@ -104,7 +104,9 @@ jobs:
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL || 'MiniMax-M2.1' }}
           # 优先使用用户PAT，fallback到默认token
           # 配置PAT后，回复会显示用户本人而非bot
+          # gh CLI 会优先使用 GH_TOKEN，然后是 GITHUB_TOKEN
           GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           LOG_FILE: ${{ github.workspace }}/logs/user_agent_${{ inputs.issue_number }}.log
           LOG_LEVEL: DEBUG
           ENABLE_ARXIV_MCP: "false"
@@ -118,6 +120,8 @@ jobs:
             --agent "${{ steps.agent.outputs.username }}" \
             --issue ${{ inputs.issue_number }} \
             --repo "${{ inputs.source_repo }}" \
+            --issue-title "${{ inputs.issue_title }}" \
+            --issue-body "${{ inputs.issue_body }}" \
             --post
 
           echo "Agent execution completed"

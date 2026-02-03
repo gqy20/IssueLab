@@ -106,6 +106,8 @@ def main():
     personal_reply_parser.add_argument(
         "--repo", type=str, default="gqy20/IssueLab", help="主仓库名称（默认gqy20/IssueLab）"
     )
+    personal_reply_parser.add_argument("--issue-title", type=str, default="", help="Issue标题（可选，用于优化）")
+    personal_reply_parser.add_argument("--issue-body", type=str, default="", help="Issue内容（可选，用于优化）")
     personal_reply_parser.add_argument("--post", action="store_true", help="自动发布回复到主仓库")
 
     args = parser.parse_args()
@@ -377,23 +379,46 @@ def main():
             print(f"❌ 未找到agent配置: {agent_config_path}")
             return 1
 
-        # 从主仓库获取issue信息
-        try:
-            result = subprocess.run(
-                ["gh", "issue", "view", str(args.issue), "--repo", args.repo, "--json", "title,body"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            issue_data = json.loads(result.stdout)
-            issue_title = issue_data.get("title", "")
-            issue_body = issue_data.get("body", "")
-        except Exception as e:
-            print(f"❌ 获取issue信息失败: {e}")
-            return 1
+        # 获取issue信息：优先使用传入的参数，否则从gh获取
+        if args.issue_title and args.issue_body:
+            issue_title = args.issue_title
+            issue_body = args.issue_body
+            print(f"使用传入的Issue信息")
+        else:
+            try:
+                result = subprocess.run(
+                    ["gh", "issue", "view", str(args.issue), "--repo", args.repo, "--json", "title,body"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                issue_data = json.loads(result.stdout)
+                issue_title = issue_data.get("title", "")
+                issue_body = issue_data.get("body", "")
+                print(f"从主仓库获取Issue信息")
+            except Exception as e:
+                print(f"❌ 获取issue信息失败: {e}")
+                return 1
 
-        # 构建上下文
-        context = f"**Issue 标题**: {issue_title}\n\n**Issue 内容**:\n{issue_body}"
+        # 构建更详细的上下文，明确告诉Agent应该做什么
+        context = f"""你被邀请参与讨论 GitHub Issue #{args.issue}。
+
+**Issue 标题**: {issue_title}
+
+**Issue 内容**:
+{issue_body}
+
+**你的任务**:
+请根据你的专业领域（见你的 prompt.md 配置），对这个 Issue 提供有价值的见解、建议或评审意见。
+
+**要求**:
+1. 基于 Issue 的具体内容发表观点
+2. 提供建设性的建议或解决方案
+3. 如果相关，可以分享类似案例或最佳实践
+4. 保持专业和友好的语气
+5. 回复应该简洁明了，聚焦核心观点
+
+请直接给出你的回复内容，不需要任何前缀（系统会自动处理）。"""
 
         # 执行agent
         print(f"🚀 使用 {args.agent} 分析 {args.repo}#{args.issue}")
