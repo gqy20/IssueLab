@@ -49,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: ./.github/actions/run-user-agent
 
       - name: Extract agent username
