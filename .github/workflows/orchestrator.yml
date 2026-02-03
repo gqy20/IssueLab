@@ -416,11 +416,13 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # ========== /command 触发（/review 和 /quiet） ==========
+  # ========== /command 触发（/review, /quiet, /close, /confirm-close） ==========
   process-command:
     if: github.event_name == 'issue_comment' &&
         (contains(github.event.comment.body, '/review') ||
-         contains(github.event.comment.body, '/quiet')) &&
+         contains(github.event.comment.body, '/quiet') ||
+         contains(github.event.comment.body, '/close') ||
+         contains(github.event.comment.body, '/confirm-close')) &&
         !contains(github.event.comment.body, '@')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -454,10 +456,14 @@ jobs:
         id: extract
         run: |
           COMMENT="${{ github.event.comment.body }}"
-          if echo "$COMMENT" | grep -q '/review'; then
+          if echo "$COMMENT" | grep -q '/confirm-close'; then
+            echo "command=/confirm-close" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT" | grep -q '/review'; then
             echo "command=/review" >> $GITHUB_OUTPUT
           elif echo "$COMMENT" | grep -q '/quiet'; then
             echo "command=/quiet" >> $GITHUB_OUTPUT
+          elif echo "$COMMENT" | grep -q '/close'; then
+            echo "command=/close" >> $GITHUB_OUTPUT
           fi
 
       - name: Handle quiet command
@@ -466,6 +472,49 @@ jobs:
           gh issue edit ${{ github.event.issue.number }} \
             --add-label "bot:quiet" \
             --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request close confirmation
+        if: steps.extract.outputs.command == '/close'
+        run: |
+          echo "🔐 收到关闭 Issue 请求，需要确认..."
+
+          # 添加待关闭标签
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "bot:pending-close" \
+            --repo ${{ github.repository }}
+
+          # 评论请求确认
+          gh issue comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "## 🔒 关闭确认
+
+此 Issue 即将被关闭。请回复 **/confirm-close** 以确认关闭，或任意回复以取消。
+
+> 由 @${{ github.event.comment.user.login }} 发起关闭请求"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Confirm and close issue
+        if: steps.extract.outputs.command == '/confirm-close'
+        run: |
+          echo "✅ 确认关闭 Issue..."
+
+          # 移除待关闭标签
+          gh issue edit ${{ github.event.issue.number }} \
+            --remove-label "bot:pending-close" \
+            --repo ${{ github.repository }}
+
+          # 关闭 Issue
+          gh issue close ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --reason "completed"
+
+          # 评论确认
+          gh issue comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "✅ Issue 已由 @${{ github.event.comment.user.login }} 手动关闭"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
