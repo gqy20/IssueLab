@@ -485,14 +485,16 @@ jobs:
             --add-label "bot:pending-close" \
             --repo ${{ github.repository }}
 
-          # 评论请求确认
+          # 评论请求确认（使用 heredoc 避免 YAML 解析问题）
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
-            --body "## 🔒 关闭确认
+            --body - <<-EOF
+            ## 🔒 关闭确认
 
-此 Issue 即将被关闭。请回复 **/confirm-close** 以确认关闭，或任意回复以取消。
+            此 Issue 即将被关闭。请回复 \*\*/confirm-close\*\* 以确认关闭，或任意回复以取消。
 
-> 由 @${{ github.event.comment.user.login }} 发起关闭请求"
+            > 由 @${{ github.event.comment.user.login }} 发起关闭请求
+            EOF
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
