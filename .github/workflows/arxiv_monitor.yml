@@ -1,23 +1,21 @@
 name: arXiv Monitor
 
-# 每6小时扫描 arXiv 新论文，自动创建 Issue 讨论
 on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       categories:
-        description: 'arXiv categories (comma-separated)'
+        description: 'arXiv categories'
         required: false
         default: 'cs.AI,cs.LG,cs.CL'
         type: string
       max_papers:
-        description: 'Max papers per run'
+        description: 'Max papers'
         required: false
         default: '5'
         type: string
 
-# 并发控制：避免多次扫描堆积
 concurrency:
   group: arxiv-monitor
   cancel-in-progress: true
@@ -27,147 +25,42 @@ permissions:
   contents: read
 
 env:
-  # 默认监控的 arXiv 分类
   CATEGORIES: ${{ github.event.inputs.categories || 'cs.AI,cs.LG,cs.CL' }}
   MAX_PAPERS: ${{ github.event.inputs.max_papers || '5' }}
 
 jobs:
   monitor:
-    # 🔒 仅在主仓库运行，避免在fork仓库中执行
     if: github.repository == 'gqy20/IssueLab'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          pip install feedparser requests
+        run: pip install feedparser PyGithub
 
       - name: Get last scan time
         id: last_scan
         run: |
-          # 尝试读取上次扫描时间
           if [ -f .arxiv_last_scan ]; then
             LAST_SCAN=$(cat .arxiv_last_scan)
             echo "last_scan=$LAST_SCAN" >> $GITHUB_OUTPUT
-            echo "找到上次扫描记录: $LAST_SCAN"
           else
-            # 默认 7 天前
             LAST_SCAN=$(date -d '7 days ago' --iso-8601=seconds)
             echo "last_scan=$LAST_SCAN" >> $GITHUB_OUTPUT
-            echo "未找到上次扫描记录，使用 7 天前: $LAST_SCAN"
           fi
 
-      - name: Fetch new papers from arXiv
-        id: fetch
+      - name: Fetch papers & create issues
         run: |
           python scripts/monitor_arxiv.py \
+            --token "${{ secrets.GITHUB_TOKEN }}" \
+            --repo "${{ github.repository }}" \
             --categories "${{ env.CATEGORIES }}" \
-            --last-scan "${{ steps.last_scan.outputs.last_scan }}" \
             --max-papers ${{ env.MAX_PAPERS }} \
-            --output /tmp/new_papers.json
-
-          PAPER_COUNT=$(jq length /tmp/new_papers.json || echo 0)
-          echo "发现 $PAPER_COUNT 篇新论文"
-          echo "paper_count=$PAPER_COUNT" >> $GITHUB_OUTPUT
-
-      - name: Create issues for new papers
-        if: steps.fetch.outputs.paper_count > 0
-        id: create_issues
-        run: |
-          CREATED=0
-
-          for row in $(jq -r '.[] | @base64' /tmp/new_papers.json); do
-            PAPER=$(echo "$row" | base64 -d)
-            TITLE=$(echo "$PAPER" | jq -r '.title')
-            SUMMARY=$(echo "$PAPER" | jq -r '.summary')
-            URL=$(echo "$PAPER" | jq -r '.url')
-            AUTHORS=$(echo "$PAPER" | jq -r '.authors')
-            PUBLISHED=$(echo "$PAPER" | jq -r '.published')
-            CATEGORY=$(echo "$PAPER" | jq -r '.category')
-
-            # 创建 Issue
-            ISSUE_BODY=$(cat <<EOF
-## 📄 论文信息
-
-**标题**: $TITLE
-**作者**: $AUTHORS
-**发布时间**: $PUBLISHED
-**分类**: $CATEGORY
-**链接**: [arXiv]($URL)
-
-## 📝 摘要
-
-$SUMMARY
-
-## 💬 讨论
-
-请对这篇论文发表您的见解：
-
-- 论文的创新点是什么？
-- 方法是否合理？
-- 实验结果是否可信？
-- 有哪些可以改进的地方？
-
-@Moderator 请分诊
-
----
-
-_由 arXiv Monitor 自动创建_
-EOF
-)
-
-            # 使用中文标题前缀
-            ISSUE_TITLE="[论文讨论] $TITLE"
-
-            # 检查是否已存在相同标题的 Issue
-            if gh issue list --repo ${{ github.repository }} --state all --jq "[.[] | select(.title == \"$ISSUE_TITLE\")] | length" | grep -q "0"; then
-              gh issue create \
-                --title "$ISSUE_TITLE" \
-                --body "$ISSUE_BODY" \
-                --repo ${{ github.repository }}
-
-              CREATED=$((CREATED + 1))
-              echo "✅ 创建 Issue: ${TITLE:0:50}..."
-            else
-              echo "⏭️  已存在，跳过: ${TITLE:0:50}..."
-            fi
-
-            # 避免 rate limit
-            sleep 2
-          done
-
-          echo "成功创建 $CREATED 个 Issue"
-          echo "created_count=$CREATED" >> $GITHUB_OUTPUT
+            --last-scan "${{ steps.last_scan.outputs.last_scan }}"
 
       - name: Update last scan time
-        run: |
-          date --iso-8601=seconds > .arxiv_last_scan
-          echo "更新时间戳: $(cat .arxiv_last_scan)"
-
-      - name: Upload scan results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: arxiv-monitor-results-${{ github.run_id }}
-          path: |
-            /tmp/new_papers.json
-            .arxiv_last_scan
-          retention-days: 7
-
-      - name: Summary comment
-        if: always()
-        run: |
-          if [ "${{ steps.create_issues.outputs.created_count }}" = "0" ] && [ "${{ steps.fetch.outputs.paper_count }}" = "0" ]; then
-            echo "📭 本次扫描未发现新论文"
-          elif [ "${{ steps.create_issues.outputs.created_count }}" = "0" ]; then
-            echo "⚠️ 发现 ${{ steps.fetch.outputs.paper_count }} 篇论文，但全部已存在"
-          else
-            echo "✅ 扫描完成：创建 ${{ steps.create_issues.outputs.created_count }} 个新 Issue"
-          fi
+        run: date --iso-8601=seconds > .arxiv_last_scan

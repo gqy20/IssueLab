@@ -16,6 +16,15 @@ repos:
       - id: ruff-format
         name: ruff (format)
 
+  # GitHub Actions - actionlint
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.10
+    hooks:
+      - id: actionlint
+        name: Check GitHub Actions
+        # 对所有 workflow 文件运行
+        files: ^\.github/workflows/.*\.ya?ml$
+
   # 基础文件检查
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
