@@ -411,11 +411,48 @@ def main():
         # 发布到主仓库
         if getattr(args, "post", False):
             try:
+                # 检查是否配置了PAT
+                gh_token = os.environ.get("GH_TOKEN", "")
+                if gh_token == os.environ.get("GITHUB_TOKEN", ""):
+                    print(
+                        "\n⚠️  警告: 使用默认 GITHUB_TOKEN 可能无法跨仓库评论"
+                        "\n建议: 配置 PERSONAL_GITHUB_TOKEN secret 以显示用户身份并获得完整权限"
+                        "\n详见: agents/_template/agent.yml 中的 GitHub Token 配置说明\n"
+                    )
+
                 subprocess.run(
                     ["gh", "issue", "comment", str(args.issue), "--repo", args.repo, "--body", response],
                     check=True,
+                    capture_output=True,
+                    text=True,
                 )
                 print(f"✅ 已发布到 {args.repo}#{args.issue}")
+            except subprocess.CalledProcessError as e:
+                error_msg = e.stderr if e.stderr else str(e)
+                print(f"❌ 发布失败: {error_msg}")
+
+                # 判断是否为权限问题
+                if "not accessible" in error_msg.lower() or "forbidden" in error_msg.lower():
+                    print(
+                        "\n💡 这可能是权限问题！"
+                        "\n解决方法："
+                        "\n1. 在你的 fork 仓库设置 PERSONAL_GITHUB_TOKEN secret"
+                        "\n2. 创建 PAT: Settings → Developer settings → Personal access tokens"
+                        "\n3. 需要权限: repo (评论) + workflow (触发)"
+                        "\n\n配置后，你的回复会显示为真实用户名，而非 bot\n"
+                    )
+
+                # 将结果输出到文件，供workflow使用
+                output_file = os.environ.get("GITHUB_OUTPUT")
+                if output_file:
+                    with open(output_file, "a") as f:
+                        # 转义换行符
+                        escaped_response = response.replace("\n", "%0A").replace("\r", "%0D")
+                        f.write(f"agent_response={escaped_response}\n")
+                        f.write(f"comment_failed=true\n")
+                    print("📝 结果已保存到 GITHUB_OUTPUT，workflow可以处理")
+
+                return 1
             except Exception as e:
                 print(f"❌ 发布失败: {e}")
                 return 1

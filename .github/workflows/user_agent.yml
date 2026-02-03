@@ -97,6 +97,7 @@ jobs:
 
       - name: Run agent
         if: steps.check.outputs.exists == 'true'
+        id: run_agent
         env:
           ANTHROPIC_AUTH_KEY: ${{ secrets.ANTHROPIC_AUTH_KEY }}
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
@@ -120,6 +121,23 @@ jobs:
             --post
 
           echo "Agent execution completed"
+
+      # Fallback: 如果用户没有配置PAT无法直接评论，将结果保存并提示
+      - name: Save response for manual posting
+        if: always() && steps.run_agent.outputs.comment_failed == 'true'
+        run: |
+          echo "⚠️ Agent executed successfully but couldn't post comment to main repo"
+          echo "📝 Response saved in logs/user_agent_${{ inputs.issue_number }}.log"
+          echo ""
+          echo "💡 To enable auto-posting with your identity:"
+          echo "1. Create a Personal Access Token (PAT) at https://github.com/settings/tokens"
+          echo "2. Grant 'repo' and 'workflow' permissions"
+          echo "3. Add as PERSONAL_GITHUB_TOKEN secret in your repository settings"
+          echo ""
+          echo "Benefits:"
+          echo "- Comments show as YOU (not github-actions bot)"
+          echo "- Can trigger other workflows with @mentions"
+          echo "- Full cross-repo permissions"
 
       # 上传日志文件
       - name: Upload logs
