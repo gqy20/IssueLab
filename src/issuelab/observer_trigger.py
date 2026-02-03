@@ -9,6 +9,7 @@ Observer 自动触发功能
 """
 
 import logging
+import os
 import subprocess
 import sys
 
@@ -92,17 +93,25 @@ def trigger_user_agent(username: str, issue_number: int, issue_title: str, issue
         # 调用dispatch.py的main函数
         from issuelab.cli.dispatch import main as dispatch_main
 
+        # 获取当前仓库信息
+        source_repo = os.environ.get("GITHUB_REPOSITORY", "")
+        if not source_repo:
+            logger.error("[ERROR] GITHUB_REPOSITORY environment variable not set")
+            return False
+
         # 模拟命令行参数
         sys.argv = [
             "dispatch",
+            "--mentions",
+            username,
+            "--source-repo",
+            source_repo,
             "--issue-number",
             str(issue_number),
             "--issue-title",
             issue_title,
             "--issue-body",
             issue_body,
-            "--mentions",
-            username,
         ]
 
         exit_code = dispatch_main()

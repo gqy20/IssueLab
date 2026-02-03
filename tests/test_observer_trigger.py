@@ -116,10 +116,11 @@ class TestUserAgentTrigger:
     """测试用户agent触发"""
 
     @patch("issuelab.cli.dispatch.main")
-    def test_trigger_user_agent_calls_dispatch(self, mock_dispatch):
+    def test_trigger_user_agent_calls_dispatch(self, mock_dispatch, monkeypatch):
         """触发用户agent应该调用dispatch系统"""
         from issuelab.observer_trigger import trigger_user_agent
 
+        monkeypatch.setenv("GITHUB_REPOSITORY", "test/repo")
         mock_dispatch.return_value = 0
 
         result = trigger_user_agent(
@@ -130,10 +131,11 @@ class TestUserAgentTrigger:
         assert result is True
 
     @patch("issuelab.cli.dispatch.main")
-    def test_trigger_user_agent_with_correct_params(self, mock_dispatch):
+    def test_trigger_user_agent_with_correct_params(self, mock_dispatch, monkeypatch):
         """触发用户agent应该传递正确的参数"""
         from issuelab.observer_trigger import trigger_user_agent
 
+        monkeypatch.setenv("GITHUB_REPOSITORY", "test/repo")
         mock_dispatch.return_value = 0
 
         trigger_user_agent(username="alice", issue_number=123, issue_title="Bug Report", issue_body="Description")
@@ -142,10 +144,11 @@ class TestUserAgentTrigger:
         mock_dispatch.assert_called_once()
 
     @patch("issuelab.cli.dispatch.main")
-    def test_trigger_user_agent_returns_false_on_failure(self, mock_dispatch):
+    def test_trigger_user_agent_returns_false_on_failure(self, mock_dispatch, monkeypatch):
         """dispatch失败应该返回False"""
         from issuelab.observer_trigger import trigger_user_agent
 
+        monkeypatch.setenv("GITHUB_REPOSITORY", "test/repo")
         mock_dispatch.return_value = 1  # 失败
 
         result = trigger_user_agent(username="gqy22", issue_number=1, issue_title="Test", issue_body="Body")
@@ -153,10 +156,11 @@ class TestUserAgentTrigger:
         assert result is False
 
     @patch("issuelab.cli.dispatch.main")
-    def test_trigger_user_agent_handles_exception(self, mock_dispatch):
+    def test_trigger_user_agent_handles_exception(self, mock_dispatch, monkeypatch):
         """dispatch异常应该被处理并返回False"""
         from issuelab.observer_trigger import trigger_user_agent
 
+        monkeypatch.setenv("GITHUB_REPOSITORY", "test/repo")
         mock_dispatch.side_effect = Exception("Dispatch error")
 
         result = trigger_user_agent(username="gqy22", issue_number=1, issue_title="Test", issue_body="Body")
