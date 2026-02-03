@@ -246,7 +246,6 @@ def main():
                     text=True,
                     check=True,
                 )
-                import json
 
                 data = json.loads(result.stdout)
 
@@ -368,9 +367,7 @@ def main():
 
     elif args.command == "personal-reply":
         # 个人Agent回复主仓库issue
-        import json
         import os
-        import subprocess
         import yaml
 
         # 读取agent配置

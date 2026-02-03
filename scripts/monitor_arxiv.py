@@ -276,14 +276,19 @@ def create_issues(recommended: list[dict], repo_name: str, token: str) -> int:
 - 实验结果是否可信？
 - 有哪些可以改进的地方？
 
-@Moderator 请分诊
-
 ---
 _由 arXiv Monitor 自动创建_"""
 
-        repo.create_issue(title=title, body=body)
-        created += 1
+        # 创建 Issue
+        issue = repo.create_issue(title=title, body=body)
         print(f"✅ 创建 Issue: {title[:50]}...")
+
+        # 创建评论触发 @Moderator（评论中的 @ 会触发 orchestrator.yml）
+        trigger_comment = "@Moderator 请分诊"
+        issue.create_comment(trigger_comment)
+        print(f"📝 触发评论: {trigger_comment}")
+
+        created += 1
         time.sleep(2)
 
     return created
