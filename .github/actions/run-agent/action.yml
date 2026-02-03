@@ -24,7 +24,8 @@ runs:
           --agents ${{ inputs.agent-name }} \
           --post
       env:
-        GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        GH_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
         ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
         ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
