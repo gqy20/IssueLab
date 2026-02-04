@@ -37,6 +37,12 @@ jobs:
           echo "🔍 检查超过 $MAX_COMMENTS 回复的 issue..."
           echo "📊 仓库: $REPO"
           echo "🔬 模式: $([ "$DRY_RUN" = "true" ] && echo "干运行" || echo "实际执行")"
+          echo "🔢 MAX_COMMENTS 变量: [$MAX_COMMENTS] (类型: $(echo "$MAX_COMMENTS" | jq -R 'type'))"
+          echo ""
+
+          # 调试：先查看所有 issue 的评论数
+          echo "📋 当前所有 open issue 的评论数:"
+          gh issue list --repo "$REPO" --state open --limit 10 --json number,comments | jq '.[] | "\(.number): \(.comments) comments"'
           echo ""
 
           # 获取超过 N 回复的 open issue
