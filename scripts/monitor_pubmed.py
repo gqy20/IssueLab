@@ -80,6 +80,7 @@ class PubMedClient:
             "retmax": max_results,
             "datetype": datetype,
             "email": self.email,
+            "sort": "pub date",  # 按出版日期排序（最新在前）
         }
 
         if mindate:
@@ -130,16 +131,37 @@ def parse_pubmed_date(date_str: str) -> str:
     """解析 PubMed 日期格式"""
     if not date_str:
         return "Unknown"
-    try:
-        # PubMed 格式: "2024 Jan 15" 或 "2024/01/15"
-        dt = datetime.strptime(date_str.strip(), "%Y %b %d")
-        return dt.strftime("%Y-%m-%d")
-    except ValueError:
+    raw = date_str.strip()
+
+    # 移除常见的附加信息（如 Epub/doi/Online ahead of print）
+    raw = re.split(r";|\s+Epub\b|\s+doi:\b|\s+Online ahead of print\b", raw, maxsplit=1)[0].strip()
+    raw = raw.rstrip(".")
+
+    # PubMed 常见格式: "2024 Jan 15", "2024 Jan", "2024/01/15", "2024-01-15"
+    for fmt in ("%Y %b %d", "%Y %B %d", "%Y/%m/%d", "%Y-%m-%d"):
         try:
-            dt = datetime.strptime(date_str.strip(), "%Y/%m/%d")
+            dt = datetime.strptime(raw, fmt)
             return dt.strftime("%Y-%m-%d")
         except ValueError:
-            return date_str[:10] if date_str else "Unknown"
+            continue
+
+    # 只有年月
+    month_match = re.match(r"^(\d{4})\s+([A-Za-z]{3,})$", raw)
+    if month_match:
+        year = month_match.group(1)
+        month = month_match.group(2)
+        for fmt in ("%Y %b %d", "%Y %B %d"):
+            try:
+                dt = datetime.strptime(f"{year} {month} 01", fmt)
+                return dt.strftime("%Y-%m-%d")
+            except ValueError:
+                continue
+
+    # 只有年份
+    if re.match(r"^\d{4}$", raw):
+        return f"{raw}-01-01"
+
+    return date_str[:10] if date_str else "Unknown"
 
 
 def clean_text(text: str) -> str:
@@ -185,7 +207,7 @@ def fetch_papers(query: str, email: str, days: int = 7, max_papers: int = 20) ->
         max_results=max_papers * 2,  # 多取一些供筛选
         mindate=start_date,
         maxdate=end_date,
-        datetype="pdat",
+        datetype="pdat",  # pdat=出版日期，edat=数据库收录日期
     )
 
     if not pmids:
@@ -218,6 +240,8 @@ def fetch_papers(query: str, email: str, days: int = 7, max_papers: int = 20) ->
                 "title": clean_text(doc.get("title", "")),
                 "journal": doc.get("source", ""),
                 "pubdate": parse_pubmed_date(doc.get("pubdate", "")),
+                "epubdate": parse_pubmed_date(doc.get("epubdate", "")),
+                "entrezdate": parse_pubmed_date(doc.get("entrezdate", "") or doc.get("sortdate", "")),
                 "authors": authors,
                 "doi": doc.get("doi", ""),
                 "url": f"https://pubmed.ncbi.nlm.nih.gov/{uid}/",
@@ -246,7 +270,11 @@ def build_papers_for_observer(papers: list[dict], query: str) -> str:
         lines.append(f"**PMID**: [{paper['pmid']}]({paper['url']})")
         lines.append(f"**标题**: {paper['title']}")
         lines.append(f"**期刊**: {paper['journal']}")
-        lines.append(f"**发表日期**: {paper['pubdate']}")
+        lines.append(f"**发表日期**: {paper.get('pubdate', '')}")
+        if paper.get("epubdate"):
+            lines.append(f"**在线发表**: {paper.get('epubdate', '')}")
+        if paper.get("entrezdate"):
+            lines.append(f"**入库日期**: {paper.get('entrezdate', '')}")
         lines.append(f"**作者**: {paper['authors']}")
         if paper.get("keywords"):
             lines.append(f"**关键词**: {', '.join(paper['keywords'][:5])}")
@@ -410,7 +438,9 @@ def create_issues(recommended: list[dict], repo_name: str, token: str, query: st
 - **PMID**: [{paper["pmid"]}]({paper["url"]})
 - **DOI**: {f"[{paper['doi']}](https://doi.org/{paper['doi']})" if paper.get('doi') else "N/A"}
 - **期刊**: {paper["journal"]}
-- **发表日期**: {paper["pubdate"]}
+- **发表日期**: {paper.get("pubdate", "N/A")}
+- **在线发表**: {paper.get("epubdate", "N/A")}
+- **入库日期**: {paper.get("entrezdate", "N/A")}
 - **作者**: {paper["authors"]}
 - **推荐理由**: {paper.get("reason", "")}
 - **推荐摘要**: {paper.get("summary", "")}"""
@@ -457,7 +487,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token", type=str, help="GitHub Token")
     parser.add_argument("--repo", type=str, help="Repository (owner/repo)")
     parser.add_argument(
-        "--query", type=str, default="(speciation) OR (hybrid speciation) OR (introgression)", help="PubMed 检索词"
+        "--query", type=str, default='"Speciation"[Mesh] OR "Hybridization, Genetic"[Mesh] OR "Genetic Introgression"[Mesh]', help="PubMed 检索词"
     )
     parser.add_argument("--days", type=int, default=1, help="追溯天数（默认: 1，即最近 1 天）")
     parser.add_argument("--max-papers", type=int, default=10, help="获取文献数量（分析前，默认: 10）")

@@ -195,6 +195,14 @@ async def run_agents_parallel(
         }
     """
     from issuelab.agents.discovery import discover_agents, load_prompt
+    from issuelab.agents.observer import run_observer_for_papers, run_pubmed_observer_for_papers
+    from issuelab.agents.paper_extractors import (
+        extract_issue_body,
+        format_arxiv_reanalysis,
+        format_pubmed_reanalysis,
+        parse_arxiv_papers_from_issue,
+        parse_pubmed_papers_from_issue,
+    )
     from issuelab.collaboration import build_collaboration_guidelines
 
     # 构建任务上下文（Issue 信息）
@@ -216,6 +224,42 @@ async def run_agents_parallel(
     async def run_agent_task(agent_name: str, results: dict[str, dict]) -> None:
         """并行任务：运行单个 agent"""
         logger.info(f"[Issue#{issue_number}] [并行] 开始执行 {agent_name}")
+
+        # 特殊：pubmed_observer / arxiv_observer 需要从 Issue 正文解析文献列表
+        if agent_name in {"pubmed_observer", "arxiv_observer"}:
+            issue_body = extract_issue_body(task_context)
+            if agent_name == "pubmed_observer":
+                papers, query = parse_pubmed_papers_from_issue(issue_body)
+                if not papers:
+                    results[agent_name] = {
+                        "response": "[Agent: pubmed_observer]\n未在 Issue 正文中识别到 PubMed 文献列表。",
+                        "cost_usd": 0.0,
+                        "num_turns": 0,
+                        "tool_calls": [],
+                    }
+                    return
+
+                recommended, raw_result = await run_pubmed_observer_for_papers(papers, query, return_result=True)
+                response = format_pubmed_reanalysis(recommended, query, total=len(papers))
+                raw_result["response"] = response
+                results[agent_name] = raw_result
+                return
+
+            papers = parse_arxiv_papers_from_issue(issue_body)
+            if not papers:
+                results[agent_name] = {
+                    "response": "[Agent: arxiv_observer]\n未在 Issue 正文中识别到 arXiv 论文信息。",
+                    "cost_usd": 0.0,
+                    "num_turns": 0,
+                    "tool_calls": [],
+                }
+                return
+
+            recommended, raw_result = await run_observer_for_papers(papers, return_result=True)
+            response = format_arxiv_reanalysis(recommended, total=len(papers))
+            raw_result["response"] = response
+            results[agent_name] = raw_result
+            return
 
         # 1. 加载 agent 的专属 prompt（定义角色和职责）
         agent_prompt = load_prompt(agent_name)

@@ -203,6 +203,10 @@ def build_pubmed_papers_for_observer(papers: list[dict], query: str) -> str:
         lines.append(f"**标题**: {paper.get('title', '')}")
         lines.append(f"**期刊**: {paper.get('journal', '')}")
         lines.append(f"**发表日期**: {paper.get('pubdate', '')}")
+        if paper.get("epubdate"):
+            lines.append(f"**在线发表**: {paper.get('epubdate', '')}")
+        if paper.get("entrezdate"):
+            lines.append(f"**入库日期**: {paper.get('entrezdate', '')}")
         lines.append(f"**作者**: {paper.get('authors', '')}")
         keywords = paper.get("keywords", [])
         if keywords:
@@ -212,7 +216,7 @@ def build_pubmed_papers_for_observer(papers: list[dict], query: str) -> str:
     return "\n".join(lines)
 
 
-async def run_observer_for_papers(papers: list[dict]) -> list[dict]:
+async def run_observer_for_papers(papers: list[dict], return_result: bool = False) -> list[dict] | tuple[list[dict], dict]:
     """运行 arxiv_observer 分析 arXiv 论文列表
 
     Args:
@@ -280,10 +284,14 @@ async def run_observer_for_papers(papers: list[dict]) -> list[dict]:
             recommended_papers.append(paper)
 
     logger.info(f"[arxiv_observer] 推荐 {len(recommended_papers)} 篇论文")
+    if return_result:
+        return recommended_papers, result
     return recommended_papers
 
 
-async def run_pubmed_observer_for_papers(papers: list[dict], query: str) -> list[dict]:
+async def run_pubmed_observer_for_papers(
+    papers: list[dict], query: str, return_result: bool = False
+) -> list[dict] | tuple[list[dict], dict]:
     """运行 pubmed_observer 分析 PubMed 文献列表
 
     Args:
@@ -350,4 +358,6 @@ async def run_pubmed_observer_for_papers(papers: list[dict], query: str) -> list
             recommended_papers.append(paper)
 
     logger.info(f"[pubmed_observer] 推荐 {len(recommended_papers)} 篇文献")
+    if return_result:
+        return recommended_papers, result
     return recommended_papers
