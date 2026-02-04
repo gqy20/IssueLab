@@ -42,7 +42,7 @@ jobs:
 
           # 调试：先查看所有 issue 的评论数
           echo "📋 当前所有 open issue 的评论数:"
-          gh issue list --repo "$REPO" --state open --limit 10 --json number,comments | jq '.[] | "\(.number): \(.comments) comments"'
+          gh issue list --repo "$REPO" --state open --limit 10 --json number,comments | jq '.[] | "\(.number): \(.comments | length) 条评论"'
           echo ""
 
           # 获取超过 N 回复的 open issue
@@ -51,7 +51,7 @@ jobs:
             --state open \
             --limit 300 \
             --json number,title,comments \
-            --jq ".[] | select(.comments > $MAX_COMMENTS) | .number")
+            --jq ".[] | select(.comments | length > $MAX_COMMENTS) | .number")
 
           if [ -z "$ISSUES" ]; then
             echo "✅ 没有需要关闭的 issue"
