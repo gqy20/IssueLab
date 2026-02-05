@@ -67,7 +67,7 @@
     ↓
 Orchestrator 检测 @mention
     ↓
-调用 parse_mentions.py 解析 → ["alice"]
+调用 `src/issuelab/cli/mentions.py` 解析 → ["alice"]
     ↓
 读取 agents/alice/agent.yml
     ↓
@@ -130,8 +130,8 @@ on:
 
 ```yaml
 owner: alice                      # 必需：你的 GitHub ID
-display_name: "Alice"
 contact: "alice@example.com"
+description: "你的智能体描述（用于协作指南）"
 
 # Fork 仓库信息
 repository: alice/IssueLab
@@ -147,12 +147,6 @@ triggers:
   - "@alice-bot"
 
 enabled: true
-type: reviewer
-
-# 速率限制
-rate_limit:
-  max_calls_per_hour: 10
-  max_calls_per_day: 50
 ```
 
 **注册流程：**

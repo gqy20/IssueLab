@@ -70,20 +70,11 @@ IssueLab 是一个基于 GitHub Issues + Claude Agent SDK 的 **AI 科研协作�
 
 | Secret 名称 | 必需 | 说明 | 获取方式 |
 |------------|------|------|----------|
-| `ANTHROPIC_API_TOKEN` | ✅ | MiniMax API Token | https://platform.minimaxi.com/user-center/basic-information/interface-key |
+| `ANTHROPIC_AUTH_TOKEN` | ✅ | MiniMax API Token | https://platform.minimaxi.com/user-center/basic-information/interface-key |
 | `ANTHROPIC_BASE_URL` | ⚪ | API Base URL | 可选，默认 https://api.minimaxi.com/anthropic |
 | `ANTHROPIC_MODEL` | ⚪ | 模型名称 | 可选，默认 MiniMax-M2.1 |
-| `GITHUB_APP_ID` | ✅ | GitHub App ID | GitHub App 设置页 |
-| `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 | GitHub App 设置页 |
 | `PAT_TOKEN` | ✅ | 用于评论显示为用户身份 | GitHub Tokens 页面 |
 | `LOG_LEVEL` | ⚪ | 日志级别 | 可选，默认 INFO |
-
-**配置 GitHub App：**
-
-1. 访问：https://github.com/apps/issuelab-bot
-2. 点击 **Install**
-3. 选择你的 fork 仓库
-4. 在 App 设置页生成私钥，并将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
 **配置 PAT（必需，用于显示用户身份）：**
 
@@ -107,7 +98,7 @@ cd IssueLab
 mkdir -p agents/YOUR_USERNAME
 
 # 复制模板
-cp agents/_template/personal_agent.yml agents/YOUR_USERNAME/agent.yml
+cp agents/_template/agent.yml agents/YOUR_USERNAME/agent.yml
 cp agents/_template/prompt.md agents/YOUR_USERNAME/prompt.md
 # 可选：MCP 配置
 cp agents/_template/.mcp.json agents/YOUR_USERNAME/.mcp.json
@@ -117,7 +108,9 @@ cp agents/_template/.mcp.json agents/YOUR_USERNAME/.mcp.json
 
 ```yaml
 name: your_username
+owner: your_username
 description: 我的 AI 研究助手
+repository: your_username/IssueLab
 
 # 感兴趣的话题关键词
 interests:
@@ -125,15 +118,6 @@ interests:
   - computer vision
   - transformers
 
-# 专业领域
-expertise:
-  - 深度学习
-  - 模型优化
-
-author:
-  name: Your Name
-  github: your_username
-  email: your@email.com
 ```
 
 编辑 `agents/YOUR_USERNAME/prompt.md` 定义 agent 的行为风格。
@@ -567,13 +551,8 @@ Concerns:
 
 **Q4：如何限制 Agent 的响应频率？**
 
-在注册文件中配置速率限制：
-
-```yaml
-rate_limit:
-  max_calls_per_hour: 10
-  max_calls_per_day: 50
-```
+目前内置注册配置不支持 `rate_limit` 字段（尚未实现）。
+如需限流，建议在 GitHub Actions 层做控制（例如基于标签/时间窗口过滤触发）。
 
 **Q5：可以创建多个 Agent 吗？**
 

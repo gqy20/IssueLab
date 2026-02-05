@@ -17,7 +17,7 @@
 
 ### 1.1 系统要求
 
-- Python >= 3.12
+- Python >= 3.13
 - uv (Python 包管理器)
 - GitHub 账户（个人或组织）
 
@@ -131,11 +131,12 @@ gh api /app/installations --jq '.[] | {account: .account.login, id: .id}'
 |------------|------|------|----------|
 | `ISSUELAB_APP_ID` | ✅ | GitHub App ID | App 设置页面顶部 |
 | `ISSUELAB_APP_PRIVATE_KEY` | ✅ | Private Key 完整内容 | 下载的 .pem 文件内容 |
-| `ANTHROPIC_API_TOKEN` | ✅ | MiniMax API Token | https://platform.minimaxi.com/user-center/basic-information/interface-key |
+| `PAT_TOKEN` | ✅ | 个人 PAT（用于评论与跨仓库触发） | https://github.com/settings/tokens |
+| `ANTHROPIC_AUTH_TOKEN` | ✅ | MiniMax API Token | https://platform.minimaxi.com/user-center/basic-information/interface-key |
 | `ANTHROPIC_BASE_URL` | ⚪ | API Base URL | 默认：https://api.minimaxi.com/anthropic |
 | `ANTHROPIC_MODEL` | ⚪ | 模型名称 | 默认：MiniMax-M2.1 |
 
-> 💡 **提示**：也可以使用智谱 GLM Coding Plan，在智谱开放平台（https://open.bigmodel.cn/）申请后，将 API Token 填入 `ANTHROPIC_API_TOKEN`，`ANTHROPIC_BASE_URL` 设为智普 API 地址。
+> 💡 **提示**：也可以使用智谱 GLM Coding Plan，在智谱开放平台（https://open.bigmodel.cn/）申请后，将 API Token 填入 `ANTHROPIC_AUTH_TOKEN`，`ANTHROPIC_BASE_URL` 设为智普 API 地址。
 
 **添加 Private Key 的正确方式：**
 
@@ -158,18 +159,10 @@ MIIEpAIBAAKCAQEA...
 
 | Secret 名称 | 必需 | 说明 |
 |------------|------|------|
-| `ANTHROPIC_API_TOKEN` | ✅ | 用户自己的 API Token（MiniMax 或智谱） |
+| `ANTHROPIC_AUTH_TOKEN` | ✅ | 用户自己的 API Token（MiniMax 或智谱） |
 | `ANTHROPIC_BASE_URL` | ⚪ | 可选，默认 https://api.minimaxi.com/anthropic |
 | `ANTHROPIC_MODEL` | ⚪ | 可选，默认 MiniMax-M2.1 |
-| `GITHUB_APP_ID` | ✅ | GitHub App ID |
-| `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 |
 | `PAT_TOKEN` | ✅ | 个人 PAT，用于评论显示用户身份 |
-
-**GitHub App 配置步骤：**
-
-1. 安装 IssueLab GitHub App 到 fork 仓库
-2. 在 App 设置页生成私钥
-3. 将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
 **PAT 配置步骤（必需）：**
 
@@ -208,8 +201,8 @@ IssueLab 支持两种 Dispatch 模式：
 ```yaml
 # agents/username/agent.yml
 owner: username                    # 必需：你的 GitHub ID
-display_name: "Your Name"
 contact: "your@email.com"
+description: "你的智能体描述（用于协作指南）"
 
 # Fork 仓库信息
 repository: username/IssueLab
@@ -224,7 +217,6 @@ triggers:
   - "@username"
 
 enabled: true
-type: reviewer
 ```
 
 ### 4.3 Workflow 配置
@@ -237,16 +229,16 @@ name: User Agent
 on:
   workflow_dispatch:
     inputs:
+      source_repo:
+        required: true
       issue_number:
         required: true
       issue_title:
-        required: true
+        required: false
       issue_body:
-        required: true
+        required: false
       comment_body:
         required: false
-      main_repo:
-        required: true
 
 jobs:
   run-agent:
@@ -464,7 +456,7 @@ gh run download RUN_ID -R YOUR_USERNAME/IssueLab
 
 ```
 ❌ 症状：Agent 运行失败，提示 API key 无效
-✅ 解决：检查 ANTHROPIC_API_TOKEN secret 是否正确配置
+✅ 解决：检查 ANTHROPIC_AUTH_TOKEN secret 是否正确配置
 ```
 
 **错误 2：`Resource not accessible by integration`**
@@ -482,7 +474,7 @@ gh run download RUN_ID -R YOUR_USERNAME/IssueLab
 ```
 ❌ 症状：无法创建评论或获取 Issue 信息
 ✅ 解决：
-  1. 检查 GitHub App 是否安装并配置 `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY`
+  1. 检查 GitHub App 是否安装并配置 `ISSUELAB_APP_ID` / `ISSUELAB_APP_PRIVATE_KEY`
   2. 确认 PAT 包含 repo 和 workflow 权限
   3. 检查 PAT 是否过期
 ```
