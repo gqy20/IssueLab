@@ -73,23 +73,16 @@ IssueLab 是一个基于 GitHub Issues + Claude Agent SDK 的 **AI 科研协作�
 | `ANTHROPIC_API_TOKEN` | ✅ | MiniMax API Token | https://platform.minimaxi.com/user-center/basic-information/interface-key |
 | `ANTHROPIC_BASE_URL` | ⚪ | API Base URL | 可选，默认 https://api.minimaxi.com/anthropic |
 | `ANTHROPIC_MODEL` | ⚪ | 模型名称 | 可选，默认 MiniMax-M2.1 |
-| `GITHUB_TOKEN` / `GH_TOKEN` | ✅ | GitHub 认证 | https://github.com/settings/tokens/new |
-| `PAT_TOKEN` | 🌟 推荐 | Personal Access Token | 同上，用于跨仓库操作 |
+| `GITHUB_APP_ID` | ✅ | GitHub App ID | GitHub App 设置页 |
+| `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 | GitHub App 设置页 |
 | `LOG_LEVEL` | ⚪ | 日志级别 | 可选，默认 INFO |
 
-**配置 PAT_TOKEN（推荐）：**
+**配置 GitHub App：**
 
-1. 访问：https://github.com/settings/tokens/new
-2. 选择 **Tokens (classic)**
-3. 过期时间：90 days 或更长
-4. 勾选权限：
-   - [x] `repo` - 完整仓库权限
-   - [x] `workflow` - 触发 workflows
-5. 复制 token 并添加到 Secrets
-
-**为什么需要 PAT_TOKEN？**
-- 使用 `GITHUB_TOKEN`：回复显示为 🤖 github-actions bot
-- 使用 `PAT_TOKEN`：回复显示为 👤 你的用户名，且能跨仓库操作
+1. 访问：https://github.com/apps/issuelab-bot
+2. 点击 **Install**
+3. 选择你的 fork 仓库
+4. 在 App 设置页生成私钥，并将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
 ### 2.4 创建你的 Agent
 
@@ -611,8 +604,8 @@ ANTHROPIC_AUTH_TOKEN（不是 ANTHROPIC_API_KEY）
 **问题：评论没有触发其他 workflow**
 
 ```bash
-# 原因：github-actions bot 的评论不会触发 workflow
-# 解决：配置 PAT_TOKEN，使用你的身份发评论
+# 原因：未配置 GitHub App，无法跨仓库触发
+# 解决：安装 IssueLab GitHub App，并配置 GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY
 ```
 
 **问题：找不到 workflow 文件**

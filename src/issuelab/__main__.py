@@ -76,9 +76,6 @@ def main():
     observe_batch_parser.add_argument(
         "--auto-trigger", action="store_true", help="自动触发 agent（内置agent用label，用户agent用dispatch）"
     )
-    observe_batch_parser.add_argument(
-        "--post", action="store_true", help="自动发布触发评论到 Issue（已弃用，推荐使用 --auto-trigger）"
-    )
 
     # 列出所有可用 Agent
     subparsers.add_parser("list-agents", help="列出所有可用的 Agent")
@@ -312,14 +309,6 @@ def main():
                         else:
                             print("  [ERROR] 自动触发失败")
 
-                # 如果需要，自动发布触发评论（已弃用，使用 auto_trigger 代替）
-                # auto_clean 会自动处理 @mentions
-                elif getattr(args, "post", False):
-                    comment = result.get("comment")
-                    if comment and post_comment(issue_num, comment):
-                        print("  [OK] 已发布触发评论（[WARNING] 注意：bot评论不会触发workflow）")
-                    else:
-                        print("  [ERROR] 发布评论失败")
             else:
                 print(f"  原因: {result.get('reason', 'N/A')}")
 
@@ -444,15 +433,6 @@ def main():
 
         # 发布到主仓库（使用 post_comment 统一处理）
         if getattr(args, "post", False):
-            # 检查是否配置了PAT
-            gh_token = os.environ.get("GH_TOKEN", "")
-            if gh_token == os.environ.get("GITHUB_TOKEN", ""):
-                print(
-                    "\n[WARNING] 警告: 使用默认 GITHUB_TOKEN 可能无法跨仓库评论"
-                    "\n建议: 配置 PAT_TOKEN secret 以显示用户身份并获得完整权限"
-                    "\n详见: agents/_template/agent.yml 中的 GitHub Token 配置说明\n"
-                )
-
             # 使用 post_comment 统一处理（auto_clean 会自动处理 @mentions）
             if post_comment(args.issue, response, repo=args.repo):
                 print(f"[OK] 已发布到 {args.repo}#{args.issue}")

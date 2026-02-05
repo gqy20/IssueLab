@@ -40,26 +40,11 @@ dispatch_mode: workflow_dispatch   # 可选：dispatch 方式
                                      #   - workflow_dispatch: 使用 workflow_dispatch 事件（推荐 fork 仓库）
 workflow_file: user_agent.yml      # 可选：workflow_dispatch 模式时指定的 workflow 文件
 
-# GitHub Token 配置（重要：影响回复身份）
-# 
-# 配置方式：在你的 fork 仓库中设置 secrets
-# Settings → Secrets and variables → Actions → New repository secret
+# GitHub App 配置（重要：用于跨仓库触发）
 #
-# 方式1：使用默认 GITHUB_TOKEN（推荐新手）
-#   - 无需额外配置
-#   - 回复显示为：github-actions[bot]
-#   - 权限受限，但足够基本使用
-#
-# 方式2：使用个人 PAT（推荐进阶用户）
-#   - Secret 名称：PAT_TOKEN
-#   - Secret 值：你的 GitHub Personal Access Token
-#   - 创建 PAT：Settings → Developer settings → Personal access tokens → Generate new token
-#   - 需要权限：repo (可以评论) + workflow (可以触发workflow)
-#   - 回复显示为：你的用户名（如 gqy22）
-#   - 好处：
-#     * 评论显示用户身份，不是 bot
-#     * 你的评论可以触发其他 workflow（如 @其他agent）
-#     * 更高权限，可访问私有仓库
+# 在你的 fork 仓库中设置 secrets：
+# - GITHUB_APP_ID
+# - GITHUB_APP_PRIVATE_KEY
 
 # 配置说明：
 #

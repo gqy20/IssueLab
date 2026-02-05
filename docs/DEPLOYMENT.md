@@ -161,24 +161,14 @@ MIIEpAIBAAKCAQEA...
 | `ANTHROPIC_API_TOKEN` | ✅ | 用户自己的 API Token（MiniMax 或智谱） |
 | `ANTHROPIC_BASE_URL` | ⚪ | 可选，默认 https://api.minimaxi.com/anthropic |
 | `ANTHROPIC_MODEL` | ⚪ | 可选，默认 MiniMax-M2.1 |
-| `PAT_TOKEN` | 🌟 推荐 | Personal Access Token，用于回复评论 |
+| `GITHUB_APP_ID` | ✅ | GitHub App ID |
+| `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 |
 
-**PAT_TOKEN 配置步骤：**
+**GitHub App 配置步骤：**
 
-1. 访问：https://github.com/settings/tokens/new
-2. 选择：Tokens (classic) → Generate new token
-3. 过期时间：建议 90 days 或更长
-4. 权限勾选：
-   - [x] `repo` - 完整的仓库权限
-   - [x] `workflow` - 触发 GitHub Actions
-5. 复制 token 并添加到 fork 仓库 Secrets
-
-**为什么需要 PAT_TOKEN？**
-
-| Token 类型 | 回复显示为 | 跨仓库评论 | 触发 workflow |
-|-----------|-----------|-----------|--------------|
-| `GITHUB_TOKEN`（默认） | 🤖 github-actions bot | ❌ 无权限 | ❌ 不触发 |
-| `PAT_TOKEN` | 👤 你的用户名 | ✅ 有权限 | ✅ 可触发 |
+1. 安装 IssueLab GitHub App 到 fork 仓库
+2. 在 App 设置页生成私钥
+3. 将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
 ### 3.3 安全最佳实践
 
@@ -270,7 +260,6 @@ jobs:
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
           ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL }}
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv run python -m issuelab agent \
@@ -483,7 +472,7 @@ gh run download RUN_ID -R YOUR_USERNAME/IssueLab
 ```
 ❌ 症状：无法创建评论或获取 Issue 信息
 ✅ 解决：
-  1. 检查 PAT_TOKEN 是否配置
+  1. 检查 GitHub App 是否安装并配置 `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY`
   2. 确认 PAT 包含 repo 和 workflow 权限
   3. 检查 PAT 是否过期
 ```

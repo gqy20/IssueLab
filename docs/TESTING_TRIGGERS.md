@@ -26,7 +26,9 @@ uv sync
 ### 2. 设置环境变量
 
 ```bash
-export GITHUB_TOKEN="your_github_token"
+export GITHUB_APP_ID="your_app_id"
+export GITHUB_APP_PRIVATE_KEY="your_app_private_key"
+export GITHUB_TOKEN="your_github_token"  # 可选：用于本地 gh CLI
 export ANTHROPIC_API_KEY="your_anthropic_api_key"
 ```
 

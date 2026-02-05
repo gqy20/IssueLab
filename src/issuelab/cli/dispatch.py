@@ -392,9 +392,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Dry run mode - validate configuration without actually dispatching",
     )
-    parser.add_argument("--use-github-app", action="store_true", help="Use GitHub App authentication")
-    parser.add_argument("--app-id", help="GitHub App ID (required if --use-github-app)")
-    parser.add_argument("--app-private-key", help="GitHub App Private Key (required if --use-github-app)")
+    parser.add_argument("--app-id", help="GitHub App ID (required)")
+    parser.add_argument("--app-private-key", help="GitHub App Private Key (required)")
 
     args = parser.parse_args(argv)
 
@@ -417,28 +416,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Error reading comment-body-file: {e}", file=sys.stderr)
             return 1
 
-    # 检查认证方式
-    use_github_app = args.use_github_app or os.environ.get("GITHUB_APP_AUTH") == "true"
+    # GitHub App 认证模式（仅保留此方式）
+    app_id = args.app_id or os.environ.get("GITHUB_APP_ID")
+    app_private_key = args.app_private_key or os.environ.get("GITHUB_APP_PRIVATE_KEY")
 
-    if use_github_app:
-        # GitHub App 认证模式
-        app_id = args.app_id or os.environ.get("GITHUB_APP_ID")
-        app_private_key = args.app_private_key or os.environ.get("GITHUB_APP_PRIVATE_KEY")
+    if not app_id or not app_private_key:
+        print("Error: GitHub App authentication requires GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY", file=sys.stderr)
+        return 1
 
-        if not app_id or not app_private_key:
-            print("Error: GitHub App authentication requires GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY", file=sys.stderr)
-            return 1
-
-        print("🔑 Using GitHub App authentication")
-        github_app_credentials = (app_id, app_private_key)
-        default_token = None
-    else:
-        # Token 认证模式（向后兼容）
-        default_token = os.environ.get("GITHUB_TOKEN")
-        if not default_token:
-            print("Error: GITHUB_TOKEN environment variable not set", file=sys.stderr)
-            return 1
-        github_app_credentials = None
+    print("🔑 Using GitHub App authentication")
+    github_app_credentials = (app_id, app_private_key)
 
     # 解析 mentions（支持 JSON 和 CSV 格式）
     mentions_str = args.mentions.strip()
@@ -552,19 +539,15 @@ def main(argv: list[str] | None = None) -> int:
         error_code = ""
 
         # 获取目标仓库的 token
-        if github_app_credentials:
-            # GitHub App 模式：为每个目标仓库动态生成 token
-            app_id, private_key = github_app_credentials
-            token = get_token_for_repository(repository, app_id, private_key)
-            if not token:
-                print(f"[WARNING] Failed to get token for {repository}", file=sys.stderr)
-                failed_agents.append(
-                    {"username": username, "repository": repository, "error": "TOKEN_GENERATION_FAILED"}
-                )
-                continue
-        else:
-            # 传统 token 模式
-            token = default_token
+        # GitHub App 模式：为每个目标仓库动态生成 token
+        app_id, private_key = github_app_credentials
+        token = get_token_for_repository(repository, app_id, private_key)
+        if not token:
+            print(f"[WARNING] Failed to get token for {repository}", file=sys.stderr)
+            failed_agents.append(
+                {"username": username, "repository": repository, "error": "TOKEN_GENERATION_FAILED"}
+            )
+            continue
 
         if dispatch_mode == "workflow_dispatch":
             # 使用 workflow_dispatch（推荐用于 fork 仓库）

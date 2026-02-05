@@ -254,7 +254,8 @@ class TestDispatchCLI:
         from issuelab.cli.dispatch import main
 
         # Mock environment
-        monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
+        monkeypatch.setenv("GITHUB_APP_ID", "fake_app_id")
+        monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "fake_private_key")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create empty agents directory
@@ -283,7 +284,8 @@ class TestDispatchCLI:
         from issuelab.cli.dispatch import main
 
         # Mock environment
-        monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
+        monkeypatch.setenv("GITHUB_APP_ID", "fake_app_id")
+        monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "fake_private_key")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create empty agents directory

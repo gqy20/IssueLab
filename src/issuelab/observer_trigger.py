@@ -2,8 +2,8 @@
 Observer 自动触发功能
 
 实现Observer自动触发agent的核心逻辑：
-- 内置agent通过workflow dispatch触发（使用PAT_TOKEN）
-- 用户agent通过repository dispatch触发（使用PAT_TOKEN）
+- 内置agent通过workflow dispatch触发（使用 GitHub App token）
+- 用户agent通过repository/workflow dispatch触发（使用 GitHub App token）
 
 统一使用dispatch机制，无需预创建labels，简化架构。
 """
