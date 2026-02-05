@@ -26,6 +26,11 @@ max_turns: 30                    # 可选：最大对话轮数
 max_budget_usd: 10.00            # 可选：最大消耗金额（美元）
 timeout_seconds: 180             # 可选：单次运行超时（秒）
 
+# 功能开关（可选，默认启用）
+enable_skills: true              # 是否加载 Skills（.claude/skills）
+enable_subagents: true           # 是否加载 Subagents（.claude/agents）
+enable_mcp: true                 # 是否启用 MCP 工具
+
 # 仓库配置（重要：必须修改为你自己的 fork 仓库）
 repository: "your-github-id/IssueLab"  # 必需：你的 fork 仓库
 branch: "main"                   # 可选：分支名，默认 main

@@ -325,6 +325,24 @@ class TestCaching:
         assert options.max_turns == 7
         assert options.max_budget_usd == 1.5
 
+    def test_create_agent_options_feature_flags(self, monkeypatch):
+        """agent.yml 功能开关应生效（默认启用）"""
+        from issuelab.agents import options as options_mod
+
+        options_mod.clear_agent_options_cache()
+
+        monkeypatch.setattr(options_mod, "load_mcp_servers_for_agent", lambda *a, **k: {"docs": {"type": "http"}})
+        monkeypatch.setattr(options_mod, "_skills_signature", lambda *a, **k: "skills-sig")
+        monkeypatch.setattr(options_mod, "_subagents_signature_from_dir", lambda *a, **k: [("a.md", 1.0)])
+        monkeypatch.setattr(
+            options_mod,
+            "get_agent_config",
+            lambda *a, **k: {"enable_mcp": False, "enable_skills": False, "enable_subagents": False},
+        )
+
+        options = options_mod.create_agent_options(agent_name="alice")
+        assert not any(t.startswith("mcp__") for t in options.allowed_tools)
+
 
 class TestParseObserverResponse:
     """测试 Observer 响应解析"""

@@ -63,6 +63,27 @@ def _get_agent_run_overrides(agent_name: str | None) -> dict[str, float | int]:
     return overrides
 
 
+def _get_agent_feature_flags(agent_name: str | None) -> dict[str, bool]:
+    """读取 agent.yml 中的功能开关（默认启用）"""
+    flags = {
+        "enable_skills": True,
+        "enable_subagents": True,
+        "enable_mcp": True,
+    }
+    if not agent_name:
+        return flags
+
+    config = get_agent_config(agent_name, agents_dir=AGENTS_DIR, include_disabled=False)
+    if not config:
+        return flags
+
+    for key in ("enable_skills", "enable_subagents", "enable_mcp"):
+        if key in config:
+            flags[key] = bool(config.get(key))
+
+    return flags
+
+
 def _read_mcp_servers_from_file(path: Path) -> dict[str, Any]:
     """读取 .mcp.json 并返回 mcpServers 字典
 
@@ -339,6 +360,7 @@ def _create_agent_options_impl(
     mcp_servers: dict[str, Any],
     cwd: Path,
     subagents_sig: str,
+    enable_subagents: bool,
 ) -> ClaudeAgentOptions:
     """创建 Agent 选项的实际实现（无缓存）"""
     env = Config.get_anthropic_env()
@@ -373,24 +395,27 @@ def _create_agent_options_impl(
             model=model,
         )
 
-    # per-agent subagents from .claude/agents
-    subagent_tools = base_tools
-    project_subagents = _load_subagents_from_dir(cwd, subagent_tools)
-    user_subagents = _load_subagents_from_dir(Path(os.path.expanduser("~")), subagent_tools)
+    if enable_subagents:
+        # per-agent subagents from .claude/agents
+        subagent_tools = base_tools
+        project_subagents = _load_subagents_from_dir(cwd, subagent_tools)
+        user_subagents = _load_subagents_from_dir(Path(os.path.expanduser("~")), subagent_tools)
 
-    # programmatic subagents override file-based on name collision
-    for name, definition in {**user_subagents, **project_subagents}.items():
-        agent_definitions[name] = definition
+        # programmatic subagents override file-based on name collision
+        for name, definition in {**user_subagents, **project_subagents}.items():
+            agent_definitions[name] = definition
 
-    if project_subagents or user_subagents:
-        logger.info(
-            "Subagents loaded for agent '%s': project=%s user=%s",
-            agent_name or "default",
-            ", ".join(sorted(project_subagents.keys())) if project_subagents else "(none)",
-            ", ".join(sorted(user_subagents.keys())) if user_subagents else "(none)",
-        )
+        if project_subagents or user_subagents:
+            logger.info(
+                "Subagents loaded for agent '%s': project=%s user=%s",
+                agent_name or "default",
+                ", ".join(sorted(project_subagents.keys())) if project_subagents else "(none)",
+                ", ".join(sorted(user_subagents.keys())) if user_subagents else "(none)",
+            )
+        else:
+            logger.info("No subagents configured for agent '%s'", agent_name or "default")
     else:
-        logger.info("No subagents configured for agent '%s'", agent_name or "default")
+        logger.info("Subagents disabled for agent '%s'", agent_name or "default")
 
     allowed_tools = main_tools[:]
     if mcp_servers:
@@ -436,6 +461,7 @@ def create_agent_options(
         如果需要强制刷新配置，请先调用 clear_agent_options_cache()。
     """
     overrides = _get_agent_run_overrides(agent_name)
+    feature_flags = _get_agent_feature_flags(agent_name)
     # 使用默认值 + per-agent 覆盖
     effective_max_turns = (
         max_turns
@@ -449,7 +475,7 @@ def create_agent_options(
     )
 
     # 缓存键：使用参数元组
-    mcp_servers = load_mcp_servers_for_agent(agent_name)
+    mcp_servers = load_mcp_servers_for_agent(agent_name) if feature_flags["enable_mcp"] else {}
     if mcp_servers:
         server_names = ", ".join(sorted(mcp_servers.keys()))
         logger.info("MCP servers loaded for agent '%s': %s", agent_name or "default", server_names)
@@ -460,22 +486,30 @@ def create_agent_options(
         logger.debug("MCP servers detail for agent '%s': %s", agent_name or "default", mcp_servers)
 
     cwd = _get_agent_cwd(agent_name)
-    project_skills = _discover_skills_in_path(cwd)
-    user_skills = _discover_skills_in_path(Path(os.path.expanduser("~")))
-    if project_skills or user_skills:
-        logger.info(
-            "Skills loaded for agent '%s': project=%s user=%s",
-            agent_name or "default",
-            ", ".join(project_skills) if project_skills else "(none)",
-            ", ".join(user_skills) if user_skills else "(none)",
-        )
+    if feature_flags["enable_skills"]:
+        project_skills = _discover_skills_in_path(cwd)
+        user_skills = _discover_skills_in_path(Path(os.path.expanduser("~")))
+        if project_skills or user_skills:
+            logger.info(
+                "Skills loaded for agent '%s': project=%s user=%s",
+                agent_name or "default",
+                ", ".join(project_skills) if project_skills else "(none)",
+                ", ".join(user_skills) if user_skills else "(none)",
+            )
+        else:
+            logger.info("No skills configured for agent '%s'", agent_name or "default")
     else:
-        logger.info("No skills configured for agent '%s'", agent_name or "default")
+        project_skills = []
+        user_skills = []
+        logger.info("Skills disabled for agent '%s'", agent_name or "default")
 
     # per-agent subagents signature for cache (avoid loading full files on cache hit)
-    project_subagents_sig = _subagents_signature_from_dir(cwd)
-    user_subagents_sig = _subagents_signature_from_dir(Path(os.path.expanduser("~")))
-    subagents_sig = _subagents_signature_for_cache(project_subagents_sig, user_subagents_sig)
+    if feature_flags["enable_subagents"]:
+        project_subagents_sig = _subagents_signature_from_dir(cwd)
+        user_subagents_sig = _subagents_signature_from_dir(Path(os.path.expanduser("~")))
+        subagents_sig = _subagents_signature_for_cache(project_subagents_sig, user_subagents_sig)
+    else:
+        subagents_sig = "disabled"
 
     cache_key = (
         effective_max_turns,
@@ -507,6 +541,7 @@ def create_agent_options(
         mcp_servers=mcp_servers,
         cwd=cwd,
         subagents_sig=subagents_sig,
+        enable_subagents=feature_flags["enable_subagents"],
     )
 
     # 存入缓存
