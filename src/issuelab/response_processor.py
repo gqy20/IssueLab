@@ -148,7 +148,7 @@ def _normalize_agent_output(response_text: str, agent_name: str | None) -> tuple
     # Render YAML-only responses into markdown for user-facing agents.
     if summary_marker not in response_text:
         yaml_text = _extract_yaml_block(response_text)
-        if yaml_text and agent_name not in {"observer", "arxiv_observer", "pubmed_observer"}:
+        if yaml_text and agent_name not in {"arxiv_observer", "pubmed_observer"}:
             try:
                 parsed = yaml.safe_load(yaml_text) or {}
             except Exception:

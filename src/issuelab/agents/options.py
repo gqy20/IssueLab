@@ -420,9 +420,7 @@ def _create_agent_options_impl(
     if os.environ.get("MCP_LOG_DETAIL") == "1":
         logger.debug("Allowed tools for agent '%s': %s", agent_name or "default", allowed_tools)
 
-    if agent_name == "observer":
-        output_format_rules = "Follow response format rules in config/observer_response_format.yml."
-    elif agent_name in {"arxiv_observer", "pubmed_observer"}:
+    if agent_name in {"arxiv_observer", "pubmed_observer"}:
         output_format_rules = "Follow response format rules in config/papers_recommendation_format.yml."
     else:
         output_format_rules = "Follow response format rules in config/response_format.yml."
