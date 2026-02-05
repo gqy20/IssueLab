@@ -100,7 +100,7 @@ def _extract_yaml_block(text: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, list[str]]:
+def _normalize_agent_output(response_text: str, agent_name: str | None) -> tuple[str, list[str]]:
     warnings: list[str] = []
     rules = _load_format_rules()
     sections = rules["sections"]
@@ -250,21 +250,24 @@ def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, l
     yaml_lines.append(f'confidence: "{confidence}"')
     yaml_lines.append("```")
 
-    normalized = [
-        f"[Agent: {agent_name}]",
-        "",
-        summary_marker,
-        summary_line or "(missing)",
-        "",
-        findings_marker,
-        *(f"- {item}" for item in findings),
-        "",
-        actions_marker,
-        *(f"- [ ] {item}" for item in actions),
-        "",
-        yaml_marker,
-        *yaml_lines,
-    ]
+    normalized: list[str] = []
+    if agent_name:
+        normalized.extend([f"[Agent: {agent_name}]", ""])
+    normalized.extend(
+        [
+            summary_marker,
+            summary_line or "(missing)",
+            "",
+            findings_marker,
+            *(f"- {item}" for item in findings),
+            "",
+            actions_marker,
+            *(f"- [ ] {item}" for item in actions),
+            "",
+            yaml_marker,
+            *yaml_lines,
+        ]
+    )
 
     return "\n".join(normalized).rstrip() + "\n", warnings
 
@@ -281,10 +284,12 @@ def _extract_agent_name(response_text: str) -> str:
     return "unknown"
 
 
-def normalize_comment_body(body: str) -> str:
+def normalize_comment_body(body: str, agent_name: str | None = None) -> str:
     if not body:
         return body
-    agent_name = _extract_agent_name(body)
+    if not agent_name:
+        inferred = _extract_agent_name(body)
+        agent_name = inferred if inferred != "unknown" else None
     normalized, _warnings = _normalize_agent_output(body, agent_name)
     rules = _load_format_rules()
     yaml_marker = rules["sections"]["structured"]

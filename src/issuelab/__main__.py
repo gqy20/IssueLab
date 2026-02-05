@@ -159,7 +159,7 @@ def main():
 
             # 如果需要，自动发布到 Issue（auto_clean 会自动处理 @mentions）
             if getattr(args, "post", False):
-                if post_comment(args.issue, response):
+                if post_comment(args.issue, response, agent_name=agent_name):
                     print(f"[OK] {agent_name} response posted to issue #{args.issue}")
                 else:
                     print(f"[ERROR] Failed to post {agent_name} response")
@@ -183,7 +183,7 @@ def main():
 
             # 如果需要，自动发布到 Issue（auto_clean 会自动处理 @mentions）
             if getattr(args, "post", False):
-                if post_comment(args.issue, response):
+                if post_comment(args.issue, response, agent_name=agent_name):
                     print(f"[OK] {agent_name} response posted to issue #{args.issue}")
                 else:
                     print(f"[ERROR] Failed to post {agent_name} response")
@@ -220,7 +220,7 @@ def main():
 
             # 如果需要，自动发布触发评论（auto_clean 会自动处理 @mentions）
             if getattr(args, "post", False):
-                if result.get("comment") and post_comment(args.issue, result["comment"]):
+                if result.get("comment") and post_comment(args.issue, result["comment"], agent_name="observer"):
                     print(f"\n[OK] Trigger comment posted to issue #{args.issue}")
                 else:
                     print("\n[ERROR] Failed to post trigger comment")
@@ -435,7 +435,7 @@ def main():
         # 发布到主仓库（使用 post_comment 统一处理）
         if getattr(args, "post", False):
             # 使用 post_comment 统一处理（auto_clean 会自动处理 @mentions）
-            if post_comment(args.issue, response, repo=args.repo):
+            if post_comment(args.issue, response, agent_name=args.agent, repo=args.repo):
                 print(f"[OK] 已发布到 {args.repo}#{args.issue}")
             else:
                 print(f"[ERROR] 发布到 {args.repo}#{args.issue} 失败")
