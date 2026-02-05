@@ -2,8 +2,8 @@ name: PubMed Monitor
 
 on:
   schedule:
-    # 每天早上 8 点运行一次
-    - cron: '0 8 * * *'
+    # 每天早上 8:17 UTC 运行一次（避开整点）
+    - cron: '17 8 * * *'
   workflow_dispatch:
     inputs:
       query:

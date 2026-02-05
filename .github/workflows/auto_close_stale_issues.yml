@@ -2,8 +2,8 @@ name: Auto-Close Stale Issues
 
 on:
   schedule:
-    # 每天凌晨 2 点运行
-    - cron: '0 2 * * *'
+    # 每天凌晨 2:23 UTC 运行（避开整点）
+    - cron: '23 2 * * *'
   workflow_dispatch:
     inputs:
       max_comments:
