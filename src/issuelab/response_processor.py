@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -35,10 +36,53 @@ __all__ = [
 ]
 
 
-_SUMMARY_MARKER = "## Summary"
-_FINDINGS_MARKER = "## Key Findings"
-_ACTIONS_MARKER = "## Recommended Actions"
-_YAML_MARKER = "## Structured (YAML)"
+_DEFAULT_FORMAT_RULES = {
+    "force_normalize": False,
+    "sections": {
+        "summary": "## Summary",
+        "findings": "## Key Findings",
+        "actions": "## Recommended Actions",
+        "structured": "## Structured (YAML)",
+    },
+    "limits": {
+        "summary_max_chars": 20,
+        "findings_count": 3,
+        "findings_max_chars": 25,
+        "actions_max_count": 2,
+        "actions_max_chars": 30,
+    },
+    "rules": {
+        "mentions_only_in_actions": True,
+        "yaml_required": True,
+    },
+}
+
+_FORMAT_RULES_CACHE: dict[str, Any] | None = None
+
+
+def _load_format_rules() -> dict[str, Any]:
+    global _FORMAT_RULES_CACHE
+    if _FORMAT_RULES_CACHE is not None:
+        return _FORMAT_RULES_CACHE
+
+    rules = {**_DEFAULT_FORMAT_RULES}
+    config_path = Path(__file__).resolve().parents[2] / "config" / "response_format.yml"
+    if config_path.exists():
+        try:
+            with config_path.open("r", encoding="utf-8") as handle:
+                data = yaml.safe_load(handle) or {}
+            rules.update({k: v for k, v in data.items() if k in rules})
+            if "sections" in data:
+                rules["sections"].update(data.get("sections", {}))
+            if "limits" in data:
+                rules["limits"].update(data.get("limits", {}))
+            if "rules" in data:
+                rules["rules"].update(data.get("rules", {}))
+        except Exception as exc:
+            logger.warning("Failed to load response format rules: %s", exc)
+
+    _FORMAT_RULES_CACHE = rules
+    return rules
 
 
 def _truncate_text(text: str, limit: int) -> str:
@@ -57,24 +101,41 @@ def _extract_yaml_block(text: str) -> str:
 
 def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, list[str]]:
     warnings: list[str] = []
-    if _SUMMARY_MARKER not in response_text:
+    rules = _load_format_rules()
+    sections = rules["sections"]
+    limits = rules["limits"]
+    force_normalize = bool(rules.get("force_normalize", False))
+
+    summary_marker = sections["summary"]
+    findings_marker = sections["findings"]
+    actions_marker = sections["actions"]
+    yaml_marker = sections["structured"]
+
+    if not force_normalize and summary_marker not in response_text:
         return response_text, warnings
 
-    markers = [_SUMMARY_MARKER, _FINDINGS_MARKER, _ACTIONS_MARKER, _YAML_MARKER]
+    markers = [summary_marker, findings_marker, actions_marker, yaml_marker]
     positions = {marker: response_text.find(marker) for marker in markers}
     missing = [marker for marker, pos in positions.items() if pos == -1]
     if missing:
         warnings.append(f"Missing sections: {', '.join(missing)}")
-        return response_text, warnings
+        if not force_normalize:
+            return response_text, warnings
 
     summary_block = response_text[
-        positions[_SUMMARY_MARKER] + len(_SUMMARY_MARKER) : positions[_FINDINGS_MARKER]
+        positions.get(summary_marker, 0) + len(summary_marker) : positions.get(findings_marker, len(response_text))
     ].strip()
     findings_block = response_text[
-        positions[_FINDINGS_MARKER] + len(_FINDINGS_MARKER) : positions[_ACTIONS_MARKER]
+        positions.get(findings_marker, len(response_text)) + len(findings_marker) : positions.get(
+            actions_marker, len(response_text)
+        )
     ].strip()
-    actions_block = response_text[positions[_ACTIONS_MARKER] + len(_ACTIONS_MARKER) : positions[_YAML_MARKER]].strip()
-    yaml_block = response_text[positions[_YAML_MARKER] + len(_YAML_MARKER) :].strip()
+    actions_block = response_text[
+        positions.get(actions_marker, len(response_text)) + len(actions_marker) : positions.get(
+            yaml_marker, len(response_text)
+        )
+    ].strip()
+    yaml_block = response_text[positions.get(yaml_marker, len(response_text)) + len(yaml_marker) :].strip()
 
     summary_line = ""
     for line in summary_block.splitlines():
@@ -84,7 +145,7 @@ def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, l
     if not summary_line:
         warnings.append("Summary is empty")
     summary_line = clean_mentions_in_text(summary_line)
-    summary_line = _truncate_text(summary_line, 20)
+    summary_line = _truncate_text(summary_line, int(limits.get("summary_max_chars", 20)))
 
     findings: list[str] = []
     for line in findings_block.splitlines():
@@ -93,9 +154,13 @@ def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, l
             findings.append(match.group(1).strip())
     if not findings:
         warnings.append("Key Findings missing bullets")
-    findings = [_truncate_text(clean_mentions_in_text(item), 25) for item in findings[:3]]
-    if len(findings) < 3:
-        warnings.append("Key Findings fewer than 3 bullets")
+    findings_count = int(limits.get("findings_count", 3))
+    findings = [
+        _truncate_text(clean_mentions_in_text(item), int(limits.get("findings_max_chars", 25)))
+        for item in findings[:findings_count]
+    ]
+    if len(findings) < findings_count:
+        warnings.append(f"Key Findings fewer than {findings_count} bullets")
 
     actions: list[str] = []
     for line in actions_block.splitlines():
@@ -104,9 +169,10 @@ def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, l
             actions.append(match.group(1).strip())
     if not actions:
         warnings.append("Recommended Actions missing bullets")
-    actions = [_truncate_text(item, 30) for item in actions[:2]]
-    if len(actions) > 2:
-        warnings.append("Recommended Actions truncated to 2 bullets")
+    actions_max = int(limits.get("actions_max_count", 2))
+    actions = [_truncate_text(item, int(limits.get("actions_max_chars", 30))) for item in actions[:actions_max]]
+    if len(actions) > actions_max:
+        warnings.append(f"Recommended Actions truncated to {actions_max} bullets")
 
     confidence = "medium"
     yaml_text = _extract_yaml_block(yaml_block)
@@ -139,16 +205,16 @@ def _normalize_agent_output(response_text: str, agent_name: str) -> tuple[str, l
     normalized = [
         f"[Agent: {agent_name}]",
         "",
-        _SUMMARY_MARKER,
+        summary_marker,
         summary_line or "(missing)",
         "",
-        _FINDINGS_MARKER,
+        findings_marker,
         *(f"- {item}" for item in findings),
         "",
-        _ACTIONS_MARKER,
+        actions_marker,
         *(f"- [ ] {item}" for item in actions),
         "",
-        _YAML_MARKER,
+        yaml_marker,
         *yaml_lines,
     ]
 

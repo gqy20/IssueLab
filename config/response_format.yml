@@ -1,0 +1,19 @@
+version: 1
+force_normalize: false
+
+sections:
+  summary: "## Summary"
+  findings: "## Key Findings"
+  actions: "## Recommended Actions"
+  structured: "## Structured (YAML)"
+
+limits:
+  summary_max_chars: 20
+  findings_count: 3
+  findings_max_chars: 25
+  actions_max_count: 2
+  actions_max_chars: 30
+
+rules:
+  mentions_only_in_actions: true
+  yaml_required: true
