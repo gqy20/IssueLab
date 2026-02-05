@@ -3,89 +3,58 @@
 from unittest.mock import patch
 
 
-class TestExtractMentions:
-    """测试 @mention 提取"""
+class TestExtractMentionsFromYaml:
+    """测试从 YAML 提取 mentions"""
 
-    def test_extract_single_mention(self):
-        """提取单个@mention"""
-        from issuelab.response_processor import extract_mentions
+    def test_extract_mentions_list(self):
+        from issuelab.response_processor import extract_mentions_from_yaml
 
-        text = "Hi @alice, please review this"
-        assert extract_mentions(text) == ["alice"]
+        text = """```yaml
+summary: "Test"
+findings:
+  - "A"
+recommendations:
+  - "B"
+mentions:
+  - alice
+  - bob
+confidence: "high"
+```"""
+        assert extract_mentions_from_yaml(text) == ["alice", "bob"]
 
-    def test_extract_multiple_mentions(self):
-        """提取多个@mentions"""
-        from issuelab.response_processor import extract_mentions
+    def test_extract_mentions_with_at_prefix(self):
+        from issuelab.response_processor import extract_mentions_from_yaml
 
-        text = "CC @bob and @charlie for review"
-        assert extract_mentions(text) == ["bob", "charlie"]
+        text = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - "@charlie"
+  - "@delta"
+confidence: "medium"
+```"""
+        assert extract_mentions_from_yaml(text) == ["charlie", "delta"]
 
-    def test_extract_mentions_with_duplicates(self):
-        """去重重复的@mentions"""
-        from issuelab.response_processor import extract_mentions
+    def test_extract_mentions_invalid_items_filtered(self):
+        from issuelab.response_processor import extract_mentions_from_yaml
 
-        text = "@alice please check this. Thanks @alice!"
-        assert extract_mentions(text) == ["alice"]
+        text = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - "not valid!"
+  - ""
+  - "ok_user"
+confidence: "low"
+```"""
+        assert extract_mentions_from_yaml(text) == ["ok_user"]
 
-    def test_extract_mentions_with_numbers(self):
-        """支持数字和下划线的用户名"""
-        from issuelab.response_processor import extract_mentions
+    def test_no_yaml_mentions(self):
+        from issuelab.response_processor import extract_mentions_from_yaml
 
-        text = "@user123 and @test_user and @gqy22"
-        assert extract_mentions(text) == ["user123", "test_user", "gqy22"]
-
-    def test_extract_mentions_with_hyphen(self):
-        """支持连字符的用户名"""
-        from issuelab.response_processor import extract_mentions
-
-        text = "@github-actions and @my-agent"
-        assert extract_mentions(text) == ["github-actions", "my-agent"]
-
-    def test_no_mentions(self):
-        """没有@mentions"""
-        from issuelab.response_processor import extract_mentions
-
-        text = "No mentions here"
-        assert extract_mentions(text) == []
-
-    def test_empty_string(self):
-        """空字符串"""
-        from issuelab.response_processor import extract_mentions
-
-        assert extract_mentions("") == []
-
-    def test_mentions_at_start(self):
-        """@mention在开头"""
-        from issuelab.response_processor import extract_mentions
-
-        text = "@alice please review"
-        assert extract_mentions(text) == ["alice"]
-
-    def test_mentions_at_end(self):
-        """@mention在结尾"""
-        from issuelab.response_processor import extract_mentions
-
-        text = "Please review @bob"
-        assert extract_mentions(text) == ["bob"]
-
-    def test_mentions_in_code_block(self):
-        """代码块中的@mentions也会被提取"""
-        from issuelab.response_processor import extract_mentions
-
-        text = "```\n@alice test\n```"
-        assert extract_mentions(text) == ["alice"]
-
-
-class TestMentionExports:
-    """确保 mention 工具函数集中于 mention_policy"""
-
-    def test_response_processor_exports_mention_policy_helpers(self):
-        """response_processor 应直接复用 mention_policy 的实现"""
-        from issuelab import mention_policy, response_processor
-
-        assert response_processor.extract_mentions is mention_policy.extract_mentions
-        assert response_processor.clean_mentions_in_text is mention_policy.clean_mentions_in_text
-        assert response_processor.build_mention_section is mention_policy.build_mention_section
+        assert extract_mentions_from_yaml("No mentions here") == []
 
 
 class TestTriggerMentionedAgents:
@@ -98,7 +67,14 @@ class TestTriggerMentionedAgents:
 
         mock_trigger.return_value = True
 
-        response = "Hi @alice, please review"
+        response = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - alice
+confidence: "high"
+```"""
         results, allowed, filtered = trigger_mentioned_agents(response, 1, "Title", "Body")
 
         assert results == {"alice": True}
@@ -113,7 +89,15 @@ class TestTriggerMentionedAgents:
 
         mock_trigger.return_value = True
 
-        response = "CC @bob and @charlie"
+        response = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - bob
+  - charlie
+confidence: "high"
+```"""
         results, allowed, filtered = trigger_mentioned_agents(response, 2, "Title", "Body")
 
         assert results == {"bob": True, "charlie": True}
@@ -126,7 +110,15 @@ class TestTriggerMentionedAgents:
         """跳过系统账号"""
         from issuelab.response_processor import trigger_mentioned_agents
 
-        response = "@github and @github-actions please check"
+        response = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - github
+  - github-actions
+confidence: "high"
+```"""
         results, allowed, filtered = trigger_mentioned_agents(response, 1, "Title", "Body")
 
         assert results == {}
@@ -141,7 +133,15 @@ class TestTriggerMentionedAgents:
 
         mock_trigger.return_value = True
 
-        response = "@github-actions deployed by @alice"
+        response = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - github-actions
+  - alice
+confidence: "high"
+```"""
         results, allowed, filtered = trigger_mentioned_agents(response, 1, "Title", "Body")
 
         assert results == {"alice": True}
@@ -169,7 +169,14 @@ class TestTriggerMentionedAgents:
 
         mock_trigger.return_value = False
 
-        response = "@alice please check"
+        response = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - alice
+confidence: "high"
+```"""
         results, allowed, filtered = trigger_mentioned_agents(response, 1, "Title", "Body")
 
         assert results == {"alice": False}
@@ -189,14 +196,21 @@ class TestProcessAgentResponse:
 
         result = process_agent_response(
             agent_name="moderator",
-            response="Hi @alice",
+            response="""```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - alice
+confidence: "high"
+```""",
             issue_number=1,
             issue_title="Title",
             issue_body="Body",
         )
 
         assert result["agent_name"] == "moderator"
-        assert result["response"] == "Hi @alice"
+        assert "## Summary" in result["response"]
         assert result["mentions"] == ["alice"]
         assert result["dispatch_results"] == {"alice": True}
 
@@ -209,12 +223,22 @@ class TestProcessAgentResponse:
 
         result = process_agent_response(
             agent_name="echo",
-            response={"response": "Hi @bob", "cost_usd": 0.01},
+            response={
+                "response": """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - bob
+confidence: "high"
+```""",
+                "cost_usd": 0.01,
+            },
             issue_number=1,
         )
 
         assert result["agent_name"] == "echo"
-        assert result["response"] == "Hi @bob"
+        assert "## Summary" in result["response"]
         assert result["mentions"] == ["bob"]
 
     @patch("issuelab.response_processor.trigger_mentioned_agents")
@@ -222,7 +246,19 @@ class TestProcessAgentResponse:
         """禁用自动dispatch"""
         from issuelab.response_processor import process_agent_response
 
-        result = process_agent_response(agent_name="test", response="Hi @alice", issue_number=1, auto_dispatch=False)
+        result = process_agent_response(
+            agent_name="test",
+            response="""```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - alice
+confidence: "high"
+```""",
+            issue_number=1,
+            auto_dispatch=False,
+        )
 
         assert result["mentions"] == ["alice"]
         assert result["dispatch_results"] == {}

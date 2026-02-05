@@ -35,10 +35,18 @@ def test_post_comment():
 
 def test_post_comment_limits_mentions(monkeypatch):
     """相关人员区域最多输出 2 个，按出现次数排序"""
-    body = (
-        "相关人员: @arxiv_observer @gqy22 @observer @summarizer @moderator "
-        "另外 @gqy22 再次被提到，@observer 也再次出现。"
-    )
+    body = """```yaml
+summary: "Test"
+findings: []
+recommendations: []
+mentions:
+  - arxiv_observer
+  - gqy22
+  - observer
+  - summarizer
+  - moderator
+confidence: "high"
+```"""
 
     captured = {}
 
@@ -59,7 +67,7 @@ def test_post_comment_limits_mentions(monkeypatch):
     content = Path(body_path).read_text(encoding="utf-8")
 
     last_line = content.strip().splitlines()[-1]
-    assert last_line == "相关人员: @gqy22 @observer"
+    assert last_line == "相关人员: @arxiv_observer @gqy22"
 
 
 def test_update_label():
