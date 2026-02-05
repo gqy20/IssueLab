@@ -83,7 +83,7 @@ alice 的 fork 仓库接收触发
     ↓
 调用 Claude API（使用 alice 的 ANTHROPIC_AUTH_TOKEN）
     ↓
-将结果回复到主仓库 Issue（优先使用 PAT_TOKEN，否则使用 GitHub App Token）
+将结果回复到主仓库 Issue（使用 PAT_TOKEN）
 ```
 
 ---

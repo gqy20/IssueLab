@@ -163,7 +163,7 @@ MIIEpAIBAAKCAQEA...
 | `ANTHROPIC_MODEL` | ⚪ | 可选，默认 MiniMax-M2.1 |
 | `GITHUB_APP_ID` | ✅ | GitHub App ID |
 | `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 |
-| `PAT_TOKEN` | ⚪ | 个人 PAT，用于评论显示用户身份 |
+| `PAT_TOKEN` | ✅ | 个人 PAT，用于评论显示用户身份 |
 
 **GitHub App 配置步骤：**
 
@@ -171,7 +171,7 @@ MIIEpAIBAAKCAQEA...
 2. 在 App 设置页生成私钥
 3. 将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
-**PAT 配置步骤（可选）：**
+**PAT 配置步骤（必需）：**
 
 1. 访问：https://github.com/settings/tokens/new
 2. 选择：Tokens (classic) → Generate new token

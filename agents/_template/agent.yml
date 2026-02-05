@@ -46,9 +46,8 @@ workflow_file: user_agent.yml      # 可选：workflow_dispatch 模式时指定�
 # - GITHUB_APP_ID
 # - GITHUB_APP_PRIVATE_KEY
 #
-# PAT 配置（用于评论显示用户身份，可选）
+# PAT 配置（用于评论显示用户身份，必需）
 # - PAT_TOKEN
-# - 如未配置，评论将显示为 GitHub App/bot
 
 # 配置说明：
 #

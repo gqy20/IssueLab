@@ -75,7 +75,7 @@ IssueLab 是一个基于 GitHub Issues + Claude Agent SDK 的 **AI 科研协作�
 | `ANTHROPIC_MODEL` | ⚪ | 模型名称 | 可选，默认 MiniMax-M2.1 |
 | `GITHUB_APP_ID` | ✅ | GitHub App ID | GitHub App 设置页 |
 | `GITHUB_APP_PRIVATE_KEY` | ✅ | GitHub App 私钥 | GitHub App 设置页 |
-| `PAT_TOKEN` | ⚪ | 用于评论显示为用户身份 | GitHub Tokens 页面 |
+| `PAT_TOKEN` | ✅ | 用于评论显示为用户身份 | GitHub Tokens 页面 |
 | `LOG_LEVEL` | ⚪ | 日志级别 | 可选，默认 INFO |
 
 **配置 GitHub App：**
@@ -85,7 +85,7 @@ IssueLab 是一个基于 GitHub Issues + Claude Agent SDK 的 **AI 科研协作�
 3. 选择你的 fork 仓库
 4. 在 App 设置页生成私钥，并将 `GITHUB_APP_ID` 与 `GITHUB_APP_PRIVATE_KEY` 添加到 Secrets
 
-**配置 PAT（可选，用于显示用户身份）：**
+**配置 PAT（必需，用于显示用户身份）：**
 
 1. 访问：https://github.com/settings/tokens/new
 2. 选择 **Tokens (classic)**

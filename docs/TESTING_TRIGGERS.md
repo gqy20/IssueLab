@@ -28,7 +28,7 @@ uv sync
 ```bash
 export GITHUB_APP_ID="your_app_id"
 export GITHUB_APP_PRIVATE_KEY="your_app_private_key"
-export PAT_TOKEN="your_pat_token"        # 可选：用于评论显示用户身份
+export PAT_TOKEN="your_pat_token"        # 必需：用于评论显示用户身份
 export GITHUB_TOKEN="your_github_token"  # 可选：用于本地 gh CLI
 export ANTHROPIC_API_KEY="your_anthropic_api_key"
 ```
