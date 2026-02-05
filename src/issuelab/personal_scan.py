@@ -12,6 +12,7 @@ import re
 import subprocess
 from typing import Any
 
+from issuelab.agents.executor import run_single_agent_text
 logger = logging.getLogger(__name__)
 
 # LLM智能扫描开关
@@ -147,10 +148,6 @@ async def llm_select_issues_async(
     agent_name: str | None = None,
 ) -> dict[str, Any]:
     """使用LLM智能选择Issues（异步版本）"""
-    from claude_agent_sdk import query
-
-    from issuelab.agents.options import create_agent_options
-
     # 构建prompt
     issues_text = "\n---\n".join(
         [f"#{i['number']}: {i.get('title', '')}\n{(i.get('body', '') or '')[:500]}" for i in issues_data]
@@ -174,14 +171,7 @@ async def llm_select_issues_async(
 
     # 调用智能体
     logger.info("[LLM] 调用智能体分析...")
-    response_text = ""
-    options = create_agent_options(agent_name=agent_name)
-
-    async for message in query(prompt=prompt, options=options):
-        if hasattr(message, "content"):
-            for block in message.content:
-                if hasattr(block, "text"):
-                    response_text += block.text
+    response_text = await run_single_agent_text(prompt, agent_name=agent_name or "personal_scan")
 
     # 解析JSON
     text = re.sub(r"```(?:json)?\s*", "", response_text)  # 去除markdown

@@ -185,3 +185,30 @@ class TestCheckAlreadyCommented:
         result = check_already_commented(1, "owner/repo", "testuser")
 
         assert result is False
+
+
+class TestLlmSelectIssues:
+    """测试 LLM 选择流程复用执行器封装"""
+
+    @patch("issuelab.personal_scan.run_single_agent_text")
+    def test_llm_select_issues_uses_executor_wrapper(self, mock_run):
+        from issuelab.personal_scan import llm_select_issues_async
+
+        async def fake_runner(prompt: str, agent_name: str | None = None):
+            return (
+                '{"selected_issues":[1],"selections":[{"issue_number":1,"priority":9,"reason":"ok"}],"reasoning":"r"}'
+            )
+
+        mock_run.side_effect = fake_runner
+
+        result = __import__("asyncio").run(
+            llm_select_issues_async(
+                agent_config={"description": "test"},
+                issues_data=[{"number": 1, "title": "t", "body": "b"}],
+                max_replies=1,
+                agent_name="tester",
+            )
+        )
+
+        assert result["selected_issues"] == [1]
+        assert mock_run.called

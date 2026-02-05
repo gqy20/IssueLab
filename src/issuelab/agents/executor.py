@@ -188,6 +188,13 @@ async def run_single_agent(prompt: str, agent_name: str) -> dict:
         }
 
 
+async def run_single_agent_text(prompt: str, agent_name: str | None = None) -> str:
+    """轻量封装：只返回响应文本"""
+    name = agent_name or "default"
+    result = await run_single_agent(prompt, name)
+    return result.get("response", "")
+
+
 async def run_agents_parallel(
     issue_number: int,
     agents: list[str],
