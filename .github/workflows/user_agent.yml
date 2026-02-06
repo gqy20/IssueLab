@@ -83,6 +83,50 @@ jobs:
           echo "config_file=$config_file" >> $GITHUB_OUTPUT
           echo "prompt_file=$prompt_file" >> $GITHUB_OUTPUT
 
+      - name: Sync dependencies
+        if: steps.check.outputs.exists == 'true'
+        run: uv sync
+
+      - name: Check LLM API health
+        if: steps.check.outputs.exists == 'true'
+        id: api_health
+        env:
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL || 'https://api.minimaxi.com/anthropic' }}
+          ANTHROPIC_MODEL: ${{ secrets.ANTHROPIC_MODEL || 'MiniMax-M2.1' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+            echo "❌ LLM API health check failed: ANTHROPIC_AUTH_TOKEN is empty"
+            exit 1
+          fi
+
+          BASE_URL="${ANTHROPIC_BASE_URL%/}"
+          MODEL="${ANTHROPIC_MODEL:-MiniMax-M2.1}"
+          PROBE_URL="$BASE_URL/v1/messages"
+
+          echo "Health check target: $PROBE_URL"
+
+          HTTP_CODE=$(curl -sS -o /tmp/llm_health_body.txt -w "%{http_code}" \
+            -X POST "$PROBE_URL" \
+            -H "content-type: application/json" \
+            -H "x-api-key: ${ANTHROPIC_AUTH_TOKEN}" \
+            -H "anthropic-version: 2023-06-01" \
+            --data "{\"model\":\"${MODEL}\",\"max_tokens\":1,\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}" || echo "000")
+
+          if [ "$HTTP_CODE" = "404" ] || [ "$HTTP_CODE" = "000" ]; then
+            echo "❌ LLM API health check failed: upstream unavailable or invalid endpoint"
+            echo "base_url=${BASE_URL}"
+            echo "probe_url=${PROBE_URL}"
+            echo "http_code=${HTTP_CODE}"
+            echo "response_preview:"
+            sed -n '1,5p' /tmp/llm_health_body.txt || true
+            exit 1
+          fi
+
+          echo "✅ LLM API health check passed (http_code=${HTTP_CODE})"
+
       - name: Run agent
         if: steps.check.outputs.exists == 'true'
         id: run_agent
@@ -154,7 +198,7 @@ jobs:
             });
 
       - name: Comment on execution error
-        if: failure() && steps.check.outputs.exists == 'true'
+        if: failure() && steps.check.outputs.exists == 'true' && steps.api_health.outcome != 'failure'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
@@ -165,4 +209,19 @@ jobs:
               repo: repo,
               issue_number: ${{ inputs.issue_number }},
               body: `❌ @${{ steps.agent.outputs.username }}'s agent encountered an error. Please check the [Actions logs](https://github.com/${{ github.repository }}/actions).`
+            });
+
+      - name: Comment on API health error
+        if: failure() && steps.check.outputs.exists == 'true' && steps.api_health.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const [owner, repo] = '${{ inputs.source_repo }}'.split('/');
+            const timestamp = new Date().toISOString();
+            await github.rest.issues.createComment({
+              owner: owner,
+              repo: repo,
+              issue_number: ${{ inputs.issue_number }},
+              body: `❌ @${{ steps.agent.outputs.username }} 的执行在 API 健康检查阶段失败（${timestamp}）。\n\n原因：上游 LLM API 不可用或端点配置错误。\n请检查 fork 仓库的 \`ANTHROPIC_BASE_URL\` / \`ANTHROPIC_AUTH_TOKEN\` 配置，并查看 [Actions logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})。`
             });
