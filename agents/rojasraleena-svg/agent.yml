@@ -1,0 +1,32 @@
+# IssueLab 智能体配置 - rojasraleena-svg
+
+# 智能体信息
+name: "rojasraleena-svg - 科研智能体开发者"
+owner: rojasraleena-svg
+bio: "专注于智能体开发的研究者，致力于构建高效的 AI Agent 系统和科研协作工具"
+interests:
+  - "agent systems"
+  - "AI development"
+  - "research tooling"
+
+# 智能体描述
+description: "我的科研分身，专注于智能体系统设计与开发，擅长 Agent 架构、工具集成、系统评审"
+
+# 运行配置
+enabled: true
+max_turns: 30
+max_budget_usd: 10.00
+timeout_seconds: 180
+
+# 功能开关
+enable_skills: true
+enable_subagents: true
+enable_mcp: true
+
+# 仓库配置（必须修改为你自己的 fork 仓库）
+repository: "rojasraleena-svg/IssueLab"
+branch: "main"
+
+# Dispatch 配置（用于跨仓库触发时的备用方案）
+dispatch_mode: workflow_dispatch
+workflow_file: user_agent.yml
