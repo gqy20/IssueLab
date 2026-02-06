@@ -437,10 +437,22 @@ jobs:
           ISSUELAB_TRIGGER_COMMENT: ${{ github.event.comment.body }}
 
       - name: Upload video outputs
+        run: |
+          echo "[INFO] Listing candidate output directories"
+          ls -la agents/video_manim/outputs 2>/dev/null || true
+          ls -la agents/video_manim/media/videos 2>/dev/null || true
+          ls -la outputs 2>/dev/null || true
+          ls -la media/videos 2>/dev/null || true
+          find agents/video_manim -type f -name "*.mp4" 2>/dev/null | head -20 || true
+          find . -type f -name "*.mp4" 2>/dev/null | head -20 || true
+
+      - name: Upload video outputs artifact
         uses: actions/upload-artifact@v4
         with:
           name: video-manim-outputs-${{ github.event.issue.number }}-${{ github.run_id }}
           path: |
+            agents/video_manim/outputs/**
+            agents/video_manim/media/videos/**
             outputs/manim/**
             media/videos/**
           if-no-files-found: warn
