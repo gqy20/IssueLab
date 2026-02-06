@@ -178,6 +178,9 @@ reasoning: "说明"
     # 调用智能体
     logger.info("[LLM] 调用智能体分析...")
     response_text = await run_single_agent_text(prompt, agent_name=agent_name or "personal_scan")
+    if response_text.strip().startswith("[错误]") or "执行失败" in response_text:
+        logger.error(f"LLM 执行失败: {response_text.strip()}")
+        return {"selected_issues": [], "selections": [], "reasoning": "LLM 执行失败"}
 
     # 解析YAML（统一输出格式）
     match = re.search(r"```yaml(.*?)```", response_text, re.DOTALL | re.IGNORECASE)

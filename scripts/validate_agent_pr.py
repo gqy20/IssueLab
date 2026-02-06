@@ -161,25 +161,33 @@ def main() -> int:
         parts = Path(file).parts
 
         if file.startswith("agents/"):
-            if len(parts) != 3:
+            if len(parts) < 3:
                 _error(errors, f"Invalid agent file path (must be agents/<name>/agent.yml or prompt.md): {file}")
                 continue
             folder = parts[1]
             filename = parts[2]
-            if filename == "agent.yml":
-                _validate_agent_yml(path, folder, errors)
-                # Ensure prompt exists
-                prompt_path = repo_root / "agents" / folder / "prompt.md"
-                if not prompt_path.exists():
-                    _error(errors, f"Missing prompt.md for agent '{folder}'")
-            elif filename == "prompt.md":
-                _validate_agent_prompt(path, errors)
-                # Ensure agent.yml exists
-                agent_path = repo_root / "agents" / folder / "agent.yml"
-                if not agent_path.exists():
-                    _error(errors, f"Missing agent.yml for agent '{folder}'")
+            if len(parts) == 3:
+                if filename == "agent.yml":
+                    _validate_agent_yml(path, folder, errors)
+                    prompt_path = repo_root / "agents" / folder / "prompt.md"
+                    if not prompt_path.exists():
+                        _error(errors, f"Missing prompt.md for agent '{folder}'")
+                elif filename == "prompt.md":
+                    _validate_agent_prompt(path, errors)
+                    agent_path = repo_root / "agents" / folder / "agent.yml"
+                    if not agent_path.exists():
+                        _error(errors, f"Missing agent.yml for agent '{folder}'")
+                elif filename == ".mcp.json":
+                    if not path.exists():
+                        _error(errors, f"Missing MCP config: {file}")
+                else:
+                    _error(errors, f"Unsupported agent file: {file}")
             else:
-                _error(errors, f"Unsupported agent file: {file}")
+                if filename == ".claude":
+                    if not path.exists():
+                        _error(errors, f"Missing agent .claude file: {file}")
+                else:
+                    _error(errors, f"Unsupported agent file: {file}")
 
         elif file.startswith("prompts/"):
             if not file.endswith(".md"):

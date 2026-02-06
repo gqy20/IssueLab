@@ -118,7 +118,7 @@ jobs:
           EOF
 
           ISSUE_NUMBERS=$(cat /tmp/issue_numbers.txt)
-          ISSUE_COUNT=$(echo "$ISSUE_NUMBERS" | tr ',' '\n' | grep -c '^[0-9]' || echo 0)
+          ISSUE_COUNT=$(echo "$ISSUE_NUMBERS" | tr ',' '\n' | grep -c '^[0-9]' || true)
 
           echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
           echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
@@ -146,7 +146,7 @@ jobs:
           # 解析结果
           if [ -f /tmp/scan_results.json ]; then
             SELECTED_ISSUES=$(cat /tmp/scan_results.json | jq -r '.selected_issues | join(",")')
-            SELECTED_COUNT=$(echo "$SELECTED_ISSUES" | tr ',' '\n' | grep -c '^[0-9]' || echo 0)
+            SELECTED_COUNT=$(echo "$SELECTED_ISSUES" | tr ',' '\n' | grep -c '^[0-9]' || true)
 
             echo "selected_issues=$SELECTED_ISSUES" >> $GITHUB_OUTPUT
             echo "selected_count=$SELECTED_COUNT" >> $GITHUB_OUTPUT
