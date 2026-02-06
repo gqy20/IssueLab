@@ -74,8 +74,6 @@ def _validate_agent_yml(path: Path, folder: str, errors: list[str]) -> None:
             repo_owner, repo_name = repo.split("/", 1)
             if not repo_owner or not repo_name:
                 _error(errors, f"repository '{repo}' must be in the form owner/name in {path}")
-            elif repo_name != "IssueLab":
-                _error(errors, f"repository '{repo}' must point to an IssueLab fork in {path}")
             else:
                 _check_repo_exists(repo, errors, path)
 
