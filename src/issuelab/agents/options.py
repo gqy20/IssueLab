@@ -27,6 +27,15 @@ logger = get_logger(__name__)
 _cached_agent_options: dict[tuple, ClaudeAgentOptions] = {}
 
 
+_TOOL_AND_CITATION_RULES = (
+    "Verification policy (mandatory): "
+    "Use available tools proactively and as much as needed to validate key claims before answering. "
+    "For high-impact conclusions, cross-check with multiple sources when possible. "
+    "Do not present uncertain claims as facts; explicitly mark uncertainty and what is missing. "
+    "Output must include traceable source links (URLs) for factual statements so readers can verify them."
+)
+
+
 def clear_agent_options_cache() -> None:
     """清除 Agent 选项缓存
 
@@ -424,12 +433,13 @@ def _create_agent_options_impl(
         output_format_rules = "Follow response format rules in config/papers_recommendation_format.yml."
     else:
         output_format_rules = "Follow response format rules in config/response_format.yml."
+    system_prompt_append = f"{output_format_rules} {_TOOL_AND_CITATION_RULES}"
 
     return ClaudeAgentOptions(
         agents=agent_definitions,
         max_turns=max_turns if max_turns is not None else AgentConfig().max_turns,
         max_budget_usd=max_budget_usd if max_budget_usd is not None else AgentConfig().max_budget_usd,
-        system_prompt={"type": "preset", "preset": "claude_code", "append": output_format_rules},
+        system_prompt={"type": "preset", "preset": "claude_code", "append": system_prompt_append},
         setting_sources=["user", "project"],
         env=env,
         permission_mode="bypassPermissions",
