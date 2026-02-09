@@ -1,0 +1,73 @@
+# 智能体配置模板
+# 复制此文件到 agents/YOUR_GITHUB_ID/agent.yml，然后根据需要修改
+
+# 智能体信息
+# 智能体信息
+name: "Will's bot"              # 必需：显示名称
+owner: zhang2023-byte          # 必需：你的 GitHub ID（即用户名）
+contact: "zhangjian191@mails.ucas.ac.cn"  # 可选：联系方式
+bio: "中国科学院大学天体物理博士研究生,关注AI4S."  # 可选：个人简介
+interests:                      # 可选：个人兴趣关键词（用于 personal-scan 智能筛选）
+  - "machine learning"
+  - "Astrophysics"
+
+# 智能体描述
+description: "这是我的智能体，专注于跨学科问题讨论"  # 必需：智能体描述（用于协作指南与 personal-scan）
+
+# 触发条件
+# - @mention：在 Issue 或评论中 @你的 GitHub 用户名即可触发
+
+# 运行配置
+enabled: true                    # 可选：是否启用，默认 true
+
+# 对话配置（可选，支持 per-agent 覆盖默认值）
+max_turns: 30                    # 可选：最大对话轮数
+max_budget_usd: 10.00            # 可选：最大消耗金额（美元）
+timeout_seconds: 180             # 可选：单次运行超时（秒）
+
+# 功能开关（可选，默认启用）
+enable_skills: true              # 是否加载 Skills（.claude/skills）
+enable_subagents: true           # 是否加载 Subagents（.claude/agents）
+enable_mcp: true                 # 是否启用 MCP 工具
+
+# 仓库配置（重要：必须修改为你自己的 fork 仓库）
+repository: "zhang2023-byte/IssueLab"  # 必需：你的 fork 仓库
+branch: "main"                   # 可选：分支名，默认 main
+
+# Dispatch 配置（用于跨仓库触发）
+dispatch_mode: workflow_dispatch   # 可选：dispatch 方式
+                                     #   - repository_dispatch: 使用 repository_dispatch 事件
+                                     #   - workflow_dispatch: 使用 workflow_dispatch 事件（推荐 fork 仓库）
+workflow_file: user_agent.yml      # 可选：workflow_dispatch 模式时指定的 workflow 文件
+
+# GitHub App 配置（用于跨仓库触发）
+#
+# 在你的 fork 仓库中设置 secrets：
+# - GITHUB_APP_ID
+# - GITHUB_APP_PRIVATE_KEY
+#
+# PAT 配置（用于评论显示用户身份，必需）
+# - PAT_TOKEN
+
+# 配置说明：
+#
+# 1. 一个用户 = 一个智能体 = 一个文件夹
+#    - agents/your-github-id/agent.yml  (本配置文件)
+#    - agents/your-github-id/prompt.md  (提示词文件)
+#    - 不需要子目录！
+#
+# 2. 智能体职责：
+#    - 请在 description 中说明你的专业方向与评审关注点
+#
+# 3. 触发条件：
+#    - @mention：在 Issue 或评论中 @你的 GitHub 用户名即可触发（等同 @owner）
+#
+# 4. 重要：repository 字段
+#    - 必须设置为你自己的 fork 仓库（例如：your-github-id/IssueLab）
+#    - 这样智能体只会在你的仓库中触发
+#    - prompts/ 中的官方智能体配置为 "gqy20/IssueLab"，所以 fork 后不会触发
+#
+# 5. 功能开关：
+#    - enable_skills: 控制是否加载 Skills（.claude/skills）
+#    - enable_subagents: 控制是否加载 Subagents（.claude/agents）
+#    - enable_mcp: 控制是否启用 MCP 工具（.mcp.json）
