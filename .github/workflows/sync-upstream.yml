@@ -7,32 +7,35 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 jobs:
   sync:
-    # 仅在 fork 仓库执行；主仓库没有“上游同步”需求
+    # 仅在 fork 仓库执行；主仓库没有"上游同步"需求
     if: github.repository != 'gqy20/IssueLab'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN || github.token }}
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Add upstream
         run: |
           git remote add upstream https://github.com/gqy20/IssueLab.git || true
           git fetch upstream
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Merge upstream/main
         run: |
           git checkout main
-          git merge upstream/main --ff-only || git merge upstream/main --no-edit
+          git merge upstream/main --ff-only || git merge upstream/main --no-edit || echo "No changes to merge"
       - name: Push
         env:
           GH_PUSH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          if [ -z "${GH_PUSH_TOKEN}" ]; then
-            echo "PAT_TOKEN is required for push in sync-upstream workflow." >&2
-            exit 1
+          if [ -n "${GH_PUSH_TOKEN}" ]; then
+            git remote set-url origin "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
           fi
-          git remote set-url origin "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
-          git push origin main
+          git push origin main || echo "Nothing to push"
