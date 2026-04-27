@@ -40,7 +40,7 @@ jobs:
           else
             agent="${GITHUB_REPOSITORY%/*}"
           fi
-          echo "name=$agent" >> $GITHUB_OUTPUT
+          echo "name=$agent" >> "$GITHUB_OUTPUT"
           echo "🤖 Agent: $agent"
 
       - name: Prepare MCP env for agent

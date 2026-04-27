@@ -111,7 +111,7 @@ jobs:
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_SHORT="${{ github.event.repository.name }}"
           DISC_ID=$(gh api graphql \
-            -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){discussion(number:$number){id}}}' \
+            -f query="query(\$owner:String!,\$name:String!,\$number:Int!){repository(owner:\$owner,name:\$name){discussion(number:\$number){id}}}" \
             -f owner="${REPO_OWNER}" \
             -f name="${REPO_SHORT}" \
             -F number="${DISCUSSION_NUMBER}" \
@@ -119,7 +119,7 @@ jobs:
 
           BODY="<!-- issuelab-daily-report -->"$'\n'"$(cat artifacts/daily_issue_health_report.md)"
           gh api graphql \
-            -f query='mutation($discussionId:ID!,$body:String!){addDiscussionComment(input:{discussionId:$discussionId,body:$body}){comment{url}}}' \
+            -f query="mutation(\$discussionId:ID!,\$body:String!){addDiscussionComment(input:{discussionId:\$discussionId,body:\$body}){comment{url}}}" \
             -f discussionId="${DISC_ID}" \
             -f body="${BODY}"
 

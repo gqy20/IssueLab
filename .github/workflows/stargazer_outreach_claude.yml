@@ -166,9 +166,9 @@ jobs:
         if: ${{ github.event.inputs.publish_comment == 'true' }}
         run: |
           set -euo pipefail
-          DISC_ID=$(gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){discussion(number:$number){id}}}' -f owner="${REPO_OWNER}" -f name="${REPO_NAME}" -F number="${DISCUSSION_NUMBER}" --jq '.data.repository.discussion.id')
+          DISC_ID=$(gh api graphql -f query="query(\$owner:String!,\$name:String!,\$number:Int!){repository(owner:\$owner,name:\$name){discussion(number:\$number){id}}}" -f owner="${REPO_OWNER}" -f name="${REPO_NAME}" -F number="${DISCUSSION_NUMBER}" --jq '.data.repository.discussion.id')
           gh api graphql \
-            -f query='mutation($discussionId:ID!,$body:String!){addDiscussionComment(input:{discussionId:$discussionId,body:$body}){comment{url}}}' \
+            -f query="mutation(\$discussionId:ID!,\$body:String!){addDiscussionComment(input:{discussionId:\$discussionId,body:\$body}){comment{url}}}" \
             -f discussionId="${DISC_ID}" \
             -f body="$(cat artifacts/invitation.md)"
 

@@ -102,7 +102,7 @@ jobs:
           printf '%s' "$CLAUDE_OUTPUT" > /tmp/claude.json
           cat /tmp/claude.json
           APPROVE=$(jq -r '.approve // false' /tmp/claude.json 2>/dev/null || echo false)
-          echo "approve=$APPROVE" >> $GITHUB_OUTPUT
+          echo "approve=$APPROVE" >> "$GITHUB_OUTPUT"
           if [ "$APPROVE" != "true" ]; then
             echo "Claude did not approve."
           fi
@@ -114,10 +114,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          gh pr merge ${{ github.event.pull_request.number }} --squash --delete-branch
+          gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
           STATUS=$?
           set -e
-          echo "exit_code=$STATUS" >> $GITHUB_OUTPUT
+          echo "exit_code=$STATUS" >> "$GITHUB_OUTPUT"
           if [ "$STATUS" -ne 0 ]; then
             echo "PR is not mergeable right now; skip failing the workflow."
           fi

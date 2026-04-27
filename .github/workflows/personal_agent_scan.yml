@@ -53,7 +53,7 @@ jobs:
 
           if [ ! -f "$OWNER_AGENT_FILE" ]; then
             echo "⚠️ 未找到仓库所有者 agent 配置: $OWNER_AGENT_FILE，跳过扫描"
-            echo "has_agent=false" >> $GITHUB_OUTPUT
+            echo "has_agent=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -63,8 +63,8 @@ jobs:
           # 提取agent名称（从目录名）
           AGENT_NAME=$(dirname "$AGENT_FILE" | xargs basename)
           echo "✅ 检测到用户agent: $AGENT_NAME"
-          echo "has_agent=true" >> $GITHUB_OUTPUT
-          echo "agent_name=$AGENT_NAME" >> $GITHUB_OUTPUT
+          echo "has_agent=true" >> "$GITHUB_OUTPUT"
+          echo "agent_name=$AGENT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Get open issues from main repo
         if: steps.detect_agent.outputs.has_agent == 'true'
@@ -76,7 +76,7 @@ jobs:
             --state open \
             --json number,title,labels,author \
             --limit 20 \
-            > /tmp/issues.json
+            > "/tmp/issues.json"
 
           # 过滤出未参与过的issues
           python - <<EOF
@@ -120,8 +120,8 @@ jobs:
           ISSUE_NUMBERS=$(cat /tmp/issue_numbers.txt)
           ISSUE_COUNT=$(echo "$ISSUE_NUMBERS" | tr ',' '\n' | grep -c '^[0-9]' || true)
 
-          echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
-          echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
+          echo "issue_count=$ISSUE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "issue_numbers=$ISSUE_NUMBERS" >> "$GITHUB_OUTPUT"
           echo "找到 $ISSUE_COUNT 个候选issues: $ISSUE_NUMBERS"
         env:
           # 优先使用PAT_TOKEN以支持跨仓库操作
@@ -141,19 +141,19 @@ jobs:
             --issues "${{ steps.get_issues.outputs.issue_numbers }}" \
             --max-replies "${{ env.MAX_ISSUES_TO_REPLY }}" \
             --repo "${{ env.MAIN_REPO }}" \
-            > /tmp/scan_results.json || true
+            > "/tmp/scan_results.json" || true
 
           # 解析结果
           if [ -f /tmp/scan_results.json ]; then
             SELECTED_ISSUES=$(cat /tmp/scan_results.json | jq -r '.selected_issues | join(",")')
             SELECTED_COUNT=$(echo "$SELECTED_ISSUES" | tr ',' '\n' | grep -c '^[0-9]' || true)
 
-            echo "selected_issues=$SELECTED_ISSUES" >> $GITHUB_OUTPUT
-            echo "selected_count=$SELECTED_COUNT" >> $GITHUB_OUTPUT
+            echo "selected_issues=$SELECTED_ISSUES" >> "$GITHUB_OUTPUT"
+            echo "selected_count=$SELECTED_COUNT" >> "$GITHUB_OUTPUT"
             echo "✅ 选择了 $SELECTED_COUNT 个issues进行回复: $SELECTED_ISSUES"
           else
             echo "⚠️ 分析失败，跳过"
-            echo "selected_count=0" >> $GITHUB_OUTPUT
+            echo "selected_count=0" >> "$GITHUB_OUTPUT"
           fi
         env:
           # 优先使用PAT_TOKEN以支持跨仓库操作

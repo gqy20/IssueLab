@@ -47,8 +47,8 @@ jobs:
           ISSUE_COUNT=$(wc -l < /tmp/issue_numbers.txt)
 
           echo "找到 $ISSUE_COUNT 个待观察的 issues: $ISSUE_NUMBERS"
-          echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
-          echo "issue_numbers=$ISSUE_NUMBERS" >> $GITHUB_OUTPUT
+          echo "issue_count=$ISSUE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "issue_numbers=$ISSUE_NUMBERS" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 

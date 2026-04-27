@@ -103,11 +103,13 @@ jobs:
           MENTION_SOURCE=$(echo "$PARSE_OUTPUT" | python -c 'import json,sys; print((json.load(sys.stdin)).get("mention_source",""), end="")')
           DETECT_REASON=$(echo "$PARSE_OUTPUT" | python -c 'import json,sys; print((json.load(sys.stdin)).get("detect_reason",""), end="")')
 
-          echo "mentions=$MENTIONS" >> "$GITHUB_OUTPUT"
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "raw_count=$RAW_COUNT" >> "$GITHUB_OUTPUT"
-          echo "mention_source=$MENTION_SOURCE" >> "$GITHUB_OUTPUT"
-          echo "detect_reason=$DETECT_REASON" >> "$GITHUB_OUTPUT"
+          {
+            echo "mentions=$MENTIONS"
+            echo "count=$COUNT"
+            echo "raw_count=$RAW_COUNT"
+            echo "mention_source=$MENTION_SOURCE"
+            echo "detect_reason=$DETECT_REASON"
+          } >> "$GITHUB_OUTPUT"
           echo "Mention source: $MENTION_SOURCE"
           echo "Detect reason: $DETECT_REASON"
 
@@ -116,7 +118,7 @@ jobs:
         run: |
           # 将 JSON 转换为单行格式
           labels=$(echo '${{ toJson(github.event.issue.labels.*.name) }}' | tr -d '\n' | tr -d ' ')
-          echo "labels=$labels" >> $GITHUB_OUTPUT
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
 
       - name: Collect available agents
         id: collect_agents
@@ -165,7 +167,7 @@ jobs:
           EOF
 
           agents_json=$(cat /tmp/agents.json)
-          echo "agents=$agents_json" >> $GITHUB_OUTPUT
+          echo "agents=$agents_json" >> "$GITHUB_OUTPUT"
           agent_count=$(echo "$agents_json" | python -c 'import sys, json; print(len(json.load(sys.stdin)))')
           echo "收集到 $agent_count 个可用智能体"
 

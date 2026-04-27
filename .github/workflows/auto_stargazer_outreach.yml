@@ -90,9 +90,11 @@ jobs:
           set -euo pipefail
 
           if [ ! -s artifacts/candidates.tsv ]; then
-            echo "has_candidates=false" >> "$GITHUB_OUTPUT"
-            echo "candidate_count=0" >> "$GITHUB_OUTPUT"
-            echo 'matrix_json=[]' >> "$GITHUB_OUTPUT"
+            {
+              echo "has_candidates=false"
+              echo "candidate_count=0"
+              echo 'matrix_json=[]'
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -106,9 +108,11 @@ jobs:
             | map({target_username: .[0], starred_at: .[1]})
           ' artifacts/selected.tsv)
 
-          echo "has_candidates=true" >> "$GITHUB_OUTPUT"
-          echo "candidate_count=${CANDIDATE_COUNT}" >> "$GITHUB_OUTPUT"
-          echo "matrix_json=${MATRIX_JSON}" >> "$GITHUB_OUTPUT"
+          {
+            echo "has_candidates=true"
+            echo "candidate_count=${CANDIDATE_COUNT}"
+            echo "matrix_json=${MATRIX_JSON}"
+          } >> "$GITHUB_OUTPUT"
 
           {
             echo "## Stargazer Outreach Discovery"
@@ -271,10 +275,10 @@ jobs:
             echo "Skip posting: artifacts/invitation.md not found"
             exit 0
           fi
-          DISC_ID=$(gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){discussion(number:$number){id}}}' -f owner="${REPO_OWNER}" -f name="${REPO_NAME}" -F number="${DISCUSSION_NUMBER}" --jq '.data.repository.discussion.id')
+          DISC_ID=$(gh api graphql -f query="query(\$owner:String!,\$name:String!,\$number:Int!){repository(owner:\$owner,name:\$name){discussion(number:\$number){id}}}" -f owner="${REPO_OWNER}" -f name="${REPO_NAME}" -F number="${DISCUSSION_NUMBER}" --jq '.data.repository.discussion.id')
           BODY="<!-- issuelab-outreach:${TARGET_USERNAME} -->"$'\n'"$(cat artifacts/invitation.md)"
           gh api graphql \
-            -f query='mutation($discussionId:ID!,$body:String!){addDiscussionComment(input:{discussionId:$discussionId,body:$body}){comment{url}}}' \
+            -f query="mutation(\$discussionId:ID!,\$body:String!){addDiscussionComment(input:{discussionId:\$discussionId,body:\$body}){comment{url}}}" \
             -f discussionId="${DISC_ID}" \
             -f body="${BODY}"
 

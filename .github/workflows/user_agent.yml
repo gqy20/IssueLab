@@ -58,7 +58,7 @@ jobs:
         run: |
           # 从仓库名提取用户名（假设仓库名是 username/IssueLab）
           username="${{ github.repository_owner }}"
-          echo "username=$username" >> $GITHUB_OUTPUT
+          echo "username=$username" >> "$GITHUB_OUTPUT"
           echo "Agent username: $username"
 
       - name: Check agent config exists
@@ -69,19 +69,21 @@ jobs:
 
           if [ ! -f "$config_file" ]; then
             echo "Error: Agent config not found: $config_file"
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
           if [ ! -f "$prompt_file" ]; then
             echo "Error: Agent prompt not found: $prompt_file"
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "exists=true" >> $GITHUB_OUTPUT
-          echo "config_file=$config_file" >> $GITHUB_OUTPUT
-          echo "prompt_file=$prompt_file" >> $GITHUB_OUTPUT
+          {
+            echo "exists=true"
+            echo "config_file=$config_file"
+            echo "prompt_file=$prompt_file"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Sync dependencies
         if: steps.check.outputs.exists == 'true'
