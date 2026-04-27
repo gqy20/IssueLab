@@ -211,6 +211,18 @@ async def run_single_agent(
                 if structured_out is not None:
                     execution_info["structured_output"] = structured_out
                     logger.info(f"[{agent_name}] [StructuredOutput] received")
+                    # Pydantic 验证
+                    stage = execution_info.get("stage")
+                    if stage:
+                        from issuelab.schemas import SchemaRegistry
+                        try:
+                            validated = SchemaRegistry.parse(stage, structured_out)
+                            logger.info(f"[{agent_name}] [StructuredOutput] schema={stage} validated ok")
+                        except Exception as exc:
+                            logger.error(f"[{agent_name}] [StructuredOutput] schema={stage} validation failed: {exc}")
+                else:
+                    stage = execution_info.get("stage")
+                    logger.warning(f"[{agent_name}] [StructuredOutput] empty (stage={stage})")
 
                 # 只在第一次收到 ResultMessage 时记录
                 if first_result:
@@ -332,6 +344,7 @@ async def run_single_agent(
             "tool_calls": [],
             "session_id": "",
             "text_blocks": [],
+            "structured_output": None,
         }
 
 
@@ -565,13 +578,6 @@ confidence: "low|medium|high"
 降级策略（重要）：
 - 当前多阶段证据收集未满足结构化门槛，请直接给出可发布答复
 - 请在开头明确标注：证据不足，基于有限信息
-- 必须使用 Markdown 输出，禁止 YAML/JSON 代码块
-- 使用以下结构：
-  - ## Summary
-  - ## Key Findings
-  - ## Evidence Gaps
-  - ## Recommended Actions
-  - ## Sources
 - 若涉及事实，请尽量给出可追溯链接；无法核验时明确说明不确定性
 """
             fallback_result = await run_single_agent(fallback_prompt, "gqy20")
