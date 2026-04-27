@@ -465,6 +465,7 @@ def _create_agent_options_impl(
     max_budget_usd: float | None,
     *,
     agent_name: str | None,
+    schema_name: str | None,
     mcp_servers: dict[str, Any],
     cwd: Path,
     subagents_sig: str,
@@ -532,22 +533,18 @@ def _create_agent_options_impl(
     if os.environ.get("MCP_LOG_DETAIL") == "1":
         logger.debug("Allowed tools for agent '%s': %s", agent_name or "default", allowed_tools)
 
-    if agent_name in {"arxiv_observer", "pubmed_observer"}:
-        output_format_rules = "Follow response format rules in config/papers_recommendation_format.yml."
-    else:
-        output_format_rules = "Follow response format rules in config/response_format.yml."
-    system_prompt_append = f"{output_format_rules} {_TOOL_AND_CITATION_RULES}"
-
     # 使用 SchemaRegistry 获取结构化输出 schema
     from issuelab.schemas import SchemaRegistry
 
-    output_format = SchemaRegistry.get_sdk_format("standard")
+    # schema_name 优先（多阶段各阶段用专属 schema），否则默认 standard
+    effective_schema = schema_name if schema_name else "standard"
+    output_format = SchemaRegistry.get_sdk_format(effective_schema)
 
     return ClaudeAgentOptions(
         agents=agent_definitions,
         max_turns=max_turns if max_turns is not None else AgentConfig().max_turns,
         max_budget_usd=max_budget_usd if max_budget_usd is not None else AgentConfig().max_budget_usd,
-        system_prompt={"type": "preset", "preset": "claude_code", "append": system_prompt_append},
+        system_prompt={"type": "preset", "preset": "claude_code", "append": _TOOL_AND_CITATION_RULES},
         setting_sources=["user", "project"],
         env=env,
         permission_mode="bypassPermissions",
@@ -564,6 +561,7 @@ def create_agent_options(
     max_budget_usd: float | None = None,
     *,
     agent_name: str | None = None,
+    schema_name: str | None = None,
 ) -> ClaudeAgentOptions:
     """创建包含所有评审代理的配置（动态发现）
 
@@ -574,6 +572,8 @@ def create_agent_options(
     Args:
         max_turns: 最大对话轮数（默认使用 AgentConfig 默认值）
         max_budget_usd: 最大花费限制（默认使用 AgentConfig 默认值）
+        agent_name: 代理名称（用于加载对应配置）
+        schema_name: 结构化输出 schema 名称（默认 standard，多阶段各阶段用专属 schema）
 
     Returns:
         ClaudeAgentOptions: 配置好的 SDK 选项
@@ -638,6 +638,7 @@ def create_agent_options(
         effective_max_turns,
         effective_max_budget,
         agent_name or "",
+        schema_name or "",
         _mcp_cache_key(mcp_servers),
         _skills_signature(cwd),
         subagents_sig,
@@ -661,6 +662,7 @@ def create_agent_options(
         effective_max_turns,
         effective_max_budget,
         agent_name=agent_name,
+        schema_name=schema_name,
         mcp_servers=mcp_servers,
         cwd=cwd,
         subagents_sig=subagents_sig,

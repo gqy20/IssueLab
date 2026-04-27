@@ -39,3 +39,38 @@ class TestSchemaIntegration:
         options = create_agent_options(agent_name="gqy20")
         expected = SchemaRegistry.get_sdk_format("standard")
         assert options.output_format == expected
+
+    def test_schema_name_defaults_to_standard(self):
+        """未指定 schema_name 时应默认使用 standard"""
+        options = create_agent_options(agent_name="gqy20")
+        expected = SchemaRegistry.get_sdk_format("standard")
+        assert options.output_format == expected
+
+    def test_schema_name_researcher(self):
+        """指定 schema_name='researcher' 时应使用 ResearcherStageOutput schema"""
+        options = create_agent_options(agent_name="gqy20", schema_name="researcher")
+        expected = SchemaRegistry.get_sdk_format("researcher")
+        assert options.output_format == expected
+        # 验证 schema title
+        assert options.output_format["schema"]["title"] == "ResearcherStageOutput"
+
+    def test_schema_name_judge(self):
+        """指定 schema_name='judge' 时应使用 JudgeStageOutput schema"""
+        options = create_agent_options(agent_name="gqy20", schema_name="judge")
+        expected = SchemaRegistry.get_sdk_format("judge")
+        assert options.output_format == expected
+        assert options.output_format["schema"]["title"] == "JudgeStageOutput"
+
+    def test_schema_name_critic(self):
+        """指定 schema_name='critic' 时应使用 CriticStageOutput schema"""
+        options = create_agent_options(agent_name="gqy20", schema_name="critic")
+        expected = SchemaRegistry.get_sdk_format("critic")
+        assert options.output_format == expected
+        assert options.output_format["schema"]["title"] == "CriticStageOutput"
+
+    def test_schema_name_verifier(self):
+        """指定 schema_name='verifier' 时应使用 VerifierStageOutput schema"""
+        options = create_agent_options(agent_name="gqy20", schema_name="verifier")
+        expected = SchemaRegistry.get_sdk_format("verifier")
+        assert options.output_format == expected
+        assert options.output_format["schema"]["title"] == "VerifierStageOutput"

@@ -36,7 +36,7 @@ async def test_gqy20_multistage_judge_retry_then_success(monkeypatch):
 
     calls = {"count": 0}
 
-    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None):
+    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None, schema_name: str | None = None):
         calls["count"] += 1
         stage = calls["count"]
         if stage == 1:
@@ -104,7 +104,7 @@ async def test_gqy20_multistage_stops_when_researcher_fails(monkeypatch):
 
     calls = {"count": 0}
 
-    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None):
+    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None, schema_name: str | None = None):
         calls["count"] += 1
         return {
             "ok": False,
@@ -134,7 +134,7 @@ async def test_gqy20_multistage_researcher_invalid_output_fallbacks_to_single_st
 
     calls = {"count": 0}
 
-    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None):
+    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None, schema_name: str | None = None):
         calls["count"] += 1
         # First call: Researcher invalid output (missing evidence)
         if calls["count"] == 1:
@@ -187,7 +187,7 @@ async def test_gqy20_multistage_judge_uses_markdown_contract(monkeypatch):
 
     calls: list[dict[str, object]] = []
 
-    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None):
+    async def fake_run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None, schema_name: str | None = None):
         calls.append({"prompt": prompt, "stage_name": stage_name})
         if "当前阶段：Researcher" in prompt:
             return {
@@ -250,4 +250,4 @@ confidence: "medium"
     assert result["ok"] is True
     judge_call = next(item for item in calls if "当前阶段：Judge" in str(item["prompt"]))
     assert judge_call["stage_name"] is None
-    assert "最终输出必须是 Markdown" in str(judge_call["prompt"])
+    assert "最终输出格式：" in str(judge_call["prompt"])

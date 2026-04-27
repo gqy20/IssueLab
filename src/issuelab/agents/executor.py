@@ -71,12 +71,20 @@ def _get_project_root() -> Path:
     return Path.cwd()
 
 
-async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None) -> dict:
+async def run_single_agent(
+    prompt: str,
+    agent_name: str,
+    *,
+    stage_name: str | None = None,
+    schema_name: str | None = None,
+) -> dict:
     """运行单个代理（带完善的中间日志监听）
 
     Args:
         prompt: 用户提示词
         agent_name: 代理名称
+        stage_name: 阶段名称（用于多阶段工作流）
+        schema_name: 结构化输出 schema 名称（默认 standard）
 
     Returns:
         {
@@ -85,6 +93,7 @@ async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | No
             "num_turns": int,  # 对话轮数
             "tool_calls": list[str],  # 工具调用列表
             "local_id": str,  # 会话 ID
+            "structured_output": Any,  # SDK 原生结构化输出
         }
     """
     logger.info(f"[{agent_name}] 开始运行 Agent")
@@ -105,10 +114,11 @@ async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | No
         "input_tokens": 0,
         "output_tokens": 0,
         "total_tokens": 0,
+        "structured_output": None,  # SDK 原生结构化输出
     }
 
     async def _query_agent():
-        options = create_agent_options(agent_name=agent_name)
+        options = create_agent_options(agent_name=agent_name, schema_name=schema_name)
         response_text = []
         turn_count = 0
         tool_calls = []
@@ -195,6 +205,12 @@ async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | No
                 execution_info["input_tokens"] = input_tokens
                 execution_info["output_tokens"] = output_tokens
                 execution_info["total_tokens"] = total_tokens
+
+                # 提取 SDK 原生结构化输出
+                structured_out = getattr(message, "structured_output", None)
+                if structured_out is not None:
+                    execution_info["structured_output"] = structured_out
+                    logger.info(f"[{agent_name}] [StructuredOutput] received")
 
                 # 只在第一次收到 ResultMessage 时记录
                 if first_result:
@@ -473,7 +489,11 @@ async def _run_gqy20_multistage(agent_prompt: str, issue_number: int, task_conte
 ## 当前任务
 {task}
 """
-        result = await run_single_agent(stage_prompt, "gqy20", stage_name=stage_name if structured_output else None)
+        result = await run_single_agent(
+            stage_prompt, "gqy20",
+            stage_name=stage_name if structured_output else None,
+            schema_name=stage_name if structured_output else None,
+        )
         total_cost += float(result.get("cost_usd", 0.0))
         total_turns += int(result.get("num_turns", 0))
         total_input_tokens += int(result.get("input_tokens", 0))
@@ -718,13 +738,8 @@ Critic 输出：
 Verifier 输出：
 {verifier_text}
 
-最终输出必须是 Markdown（禁止 YAML/JSON 代码块）：
+最终输出格式：
 - [Agent: gqy20]
-- ## Summary
-- ## Key Findings
-- ## Evidence Gaps
-- ## Recommended Actions
-- ## Sources
 """
 
     judge_text = ""
@@ -918,7 +933,6 @@ async def run_agents_parallel(
 - 请以 [Agent: {agent_name}] 为前缀发布你的回复
 - 专注于 Issue 的讨论话题和内容
 - 不要去分析项目代码或架构（除非 Issue 明确要求）
-- 仅输出 Markdown，禁止输出 YAML/JSON 代码块
 """
         if os.environ.get("PROMPT_LOG") == "1":
             max_len = 2000
