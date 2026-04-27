@@ -35,40 +35,6 @@ _SYSTEM_EXECUTION_TIMEOUT_SECONDS = 600
 
 _ALLOWED_OUTPUT_FORMATS = {"markdown", "yaml", "hybrid"}
 _ALLOWED_MENTIONS_MODES = {"controlled", "required", "off"}
-_GLOBAL_OUTPUT_TEMPLATES_CACHE: dict[str, Any] | None = None
-_AGENT_OUTPUT_CONFIG_CACHE: dict[str, dict[str, Any]] = {}
-
-_OUTPUT_SCHEMA_BLOCK_MARKDOWN = (
-    "\n\n## Output Format (required)\n"
-    "请使用 Markdown 输出，禁止输出 YAML/JSON 代码块。\n\n"
-    "请严格使用以下结构：\n"
-    "- `## Summary`：1-3 句结论\n"
-    "- `## Key Findings`：2-5 条要点（列表）\n"
-    "- `## Recommended Actions`：1-5 条可执行动作（任务列表）\n"
-    "- 如需触发协作，仅在文末使用受控区：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表\n"
-)
-
-_OUTPUT_SCHEMA_BLOCK_YAML = (
-    "\n\n## Output Format (required)\n"
-    "优先输出以下 YAML；若无法稳定产出 YAML，可降级为结构化 Markdown（Summary/Findings/Recommendations）：\n\n"
-    "```yaml\n"
-    'summary: ""\n'
-    "findings:\n"
-    '  - ""\n'
-    "recommendations:\n"
-    '  - ""\n'
-    'confidence: "low|medium|high"\n'
-    "```\n"
-)
-
-_OUTPUT_SCHEMA_BLOCK_HYBRID = (
-    "\n\n## Output Format (required)\n"
-    "优先使用 Markdown 输出；仅在你无法稳定按 Markdown 结构输出时，才允许使用单个 YAML 代码块。\n"
-    "Markdown 结构优先：\n"
-    "- `## Summary`\n"
-    "- `## Key Findings`\n"
-    "- `## Recommended Actions`\n"
-)
 
 _DEFAULT_ATTEMPT_TIMEOUT_SECONDS = 90
 
@@ -105,182 +71,6 @@ def _get_project_root() -> Path:
     return Path.cwd()
 
 
-def _load_global_output_templates(root_dir: Path | None = None) -> dict[str, Any]:
-    global _GLOBAL_OUTPUT_TEMPLATES_CACHE
-    if _GLOBAL_OUTPUT_TEMPLATES_CACHE is not None:
-        return _GLOBAL_OUTPUT_TEMPLATES_CACHE
-
-    root = root_dir or _get_project_root()
-    path = root / "config" / "output_templates.yml"
-    if not path.exists():
-        _GLOBAL_OUTPUT_TEMPLATES_CACHE = {}
-        return _GLOBAL_OUTPUT_TEMPLATES_CACHE
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        _GLOBAL_OUTPUT_TEMPLATES_CACHE = data if isinstance(data, dict) else {}
-    except Exception:
-        _GLOBAL_OUTPUT_TEMPLATES_CACHE = {}
-    return _GLOBAL_OUTPUT_TEMPLATES_CACHE
-
-
-def _load_agent_output_config(agent_name: str, root_dir: Path | None = None) -> dict[str, Any]:
-    key = f"{root_dir or _get_project_root()}::{agent_name}"
-    if key in _AGENT_OUTPUT_CONFIG_CACHE:
-        return _AGENT_OUTPUT_CONFIG_CACHE[key]
-
-    root = root_dir or _get_project_root()
-    path = root / "agents" / agent_name / "output_config.yml"
-    if not path.exists():
-        _AGENT_OUTPUT_CONFIG_CACHE[key] = {}
-        return _AGENT_OUTPUT_CONFIG_CACHE[key]
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        _AGENT_OUTPUT_CONFIG_CACHE[key] = data if isinstance(data, dict) else {}
-    except Exception:
-        _AGENT_OUTPUT_CONFIG_CACHE[key] = {}
-    return _AGENT_OUTPUT_CONFIG_CACHE[key]
-
-
-def _resolve_output_template(
-    agent_name: str, template_id: str | None, *, root_dir: Path | None = None, default_template: str = "review_v1"
-) -> dict[str, Any] | None:
-    global_config = _load_global_output_templates(root_dir=root_dir)
-    global_templates = global_config.get("templates", {}) if isinstance(global_config, dict) else {}
-    agent_config = _load_agent_output_config(agent_name, root_dir=root_dir)
-    local_templates = agent_config.get("templates", {}) if isinstance(agent_config, dict) else {}
-
-    template_name = template_id
-    if not template_name:
-        local_default = agent_config.get("default_template")
-        global_default = global_config.get("default_template") if isinstance(global_config, dict) else None
-        if isinstance(local_default, str) and local_default.strip():
-            template_name = local_default.strip()
-        elif isinstance(global_default, str) and global_default.strip():
-            template_name = global_default.strip()
-        else:
-            template_name = default_template
-
-    if template_name.startswith("local:"):
-        local_name = template_name.split(":", 1)[1].strip()
-        candidate = local_templates.get(local_name)
-        return candidate if isinstance(candidate, dict) else None
-
-    if (
-        isinstance(local_templates, dict)
-        and template_name in local_templates
-        and isinstance(local_templates[template_name], dict)
-    ):
-        return local_templates[template_name]
-    if (
-        isinstance(global_templates, dict)
-        and template_name in global_templates
-        and isinstance(global_templates[template_name], dict)
-    ):
-        return global_templates[template_name]
-    return None
-
-
-def _build_template_instruction(
-    template: dict[str, Any], *, mentions_mode: str, output_format: str, section_order_override: list[str] | None = None
-) -> str | None:
-    sections = template.get("sections")
-    section_order = section_order_override or template.get("section_order")
-    if not isinstance(sections, dict) or not isinstance(section_order, list):
-        return None
-
-    ordered: list[str] = [str(item) for item in section_order if isinstance(item, str)]
-    if not ordered:
-        return None
-
-    lines = ["", "", "## Output Format (required)"]
-    if output_format == "hybrid":
-        lines.append("优先使用 Markdown；仅在无法稳定输出时允许单个 YAML 代码块。")
-    else:
-        lines.append("请使用 Markdown 输出，禁止输出 YAML/JSON 代码块。")
-    lines.append("")
-    lines.append("请按以下段落顺序输出：")
-
-    for index, section_key in enumerate(ordered, 1):
-        config = sections.get(section_key)
-        if not isinstance(config, dict):
-            continue
-        title = str(config.get("title") or f"## {section_key.replace('_', ' ').title()}").strip()
-        guidance = str(config.get("guidance") or "").strip()
-        if guidance:
-            lines.append(f"{index}. `{title}`：{guidance}")
-        else:
-            lines.append(f"{index}. `{title}`")
-
-    mention_instruction = {
-        "controlled": "如需触发协作，仅在文末使用受控区：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表。",
-        "required": "必须在文末使用受控区输出协作对象：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表。",
-        "off": "不要输出 `相关人员`/`协作请求` 受控区。",
-    }.get(mentions_mode, "如需触发协作，仅在文末使用受控区：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表。")
-    lines.extend(["", f"- {mention_instruction}"])
-    return "\n".join(lines)
-
-
-def _get_output_preferences(agent_name: str) -> tuple[str, str, str | None, list[str] | None]:
-    try:
-        config = get_agent_config(agent_name) or {}
-    except Exception:
-        config = {}
-
-    template_id = config.get("output_template")
-    if not isinstance(template_id, str):
-        template_id = None
-
-    section_order = config.get("section_order")
-    parsed_section_order: list[str] | None = None
-    if isinstance(section_order, list) and all(isinstance(x, str) for x in section_order):
-        parsed_section_order = [str(x) for x in section_order]
-
-    return (
-        _normalize_output_format(config.get("output_format")),
-        _normalize_mentions_mode(config.get("mentions_mode")),
-        template_id,
-        parsed_section_order,
-    )
-
-
-def _append_output_schema(
-    prompt: str,
-    agent_name: str,
-    stage_name: str | None = None,
-    *,
-    output_format: str = "markdown",
-    mentions_mode: str = "controlled",
-    output_template: str | None = None,
-    section_order: list[str] | None = None,
-) -> str:
-    """为 prompt 注入统一输出格式（如果尚未注入）。"""
-    if "## Output Format (required)" in prompt:
-        return prompt
-    if stage_name:
-        return f"{prompt}{_OUTPUT_SCHEMA_BLOCK_YAML}"
-
-    mention_instruction = {
-        "controlled": "- 如需触发协作，仅在文末使用受控区：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表\n",
-        "required": "- 必须在文末使用受控区输出协作对象：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表\n",
-        "off": "- 不要输出 `相关人员`/`协作请求` 受控区\n",
-    }.get(mentions_mode, "- 如需触发协作，仅在文末使用受控区：`---\\n相关人员: @user1 @user2` 或 `协作请求:` 列表\n")
-
-    if output_format == "yaml":
-        return f"{prompt}{_OUTPUT_SCHEMA_BLOCK_YAML}"
-
-    template = _resolve_output_template(agent_name, output_template)
-    if template:
-        rendered = _build_template_instruction(
-            template, mentions_mode=mentions_mode, output_format=output_format, section_order_override=section_order
-        )
-        if rendered:
-            return f"{prompt}{rendered}"
-
-    if output_format == "hybrid":
-        return f"{prompt}{_OUTPUT_SCHEMA_BLOCK_HYBRID}{mention_instruction}"
-    return f"{prompt}{_OUTPUT_SCHEMA_BLOCK_MARKDOWN}{mention_instruction}"
-
-
 async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | None = None) -> dict:
     """运行单个代理（带完善的中间日志监听）
 
@@ -299,7 +89,6 @@ async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | No
     """
     logger.info(f"[{agent_name}] 开始运行 Agent")
     logger.debug(f"[{agent_name}] Prompt 长度: {len(prompt)} 字符")
-    output_format, mentions_mode, output_template, section_order = _get_output_preferences(agent_name)
 
     # 执行信息收集
     execution_info: dict[str, Any] = {
@@ -325,16 +114,7 @@ async def run_single_agent(prompt: str, agent_name: str, *, stage_name: str | No
         tool_calls = []
         first_result = True
 
-        effective_prompt = _append_output_schema(
-            prompt,
-            agent_name,
-            stage_name=stage_name,
-            output_format=output_format,
-            mentions_mode=mentions_mode,
-            output_template=output_template,
-            section_order=section_order,
-        )
-        async for message in query(prompt=effective_prompt, options=options):
+        async for message in query(prompt=prompt, options=options):
             # AssistantMessage: AI 响应（文本或工具调用）
             if isinstance(message, AssistantMessage):
                 turn_count += 1

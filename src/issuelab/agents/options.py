@@ -538,6 +538,11 @@ def _create_agent_options_impl(
         output_format_rules = "Follow response format rules in config/response_format.yml."
     system_prompt_append = f"{output_format_rules} {_TOOL_AND_CITATION_RULES}"
 
+    # 使用 SchemaRegistry 获取结构化输出 schema
+    from issuelab.schemas import SchemaRegistry
+
+    output_format = SchemaRegistry.get_sdk_format("standard")
+
     return ClaudeAgentOptions(
         agents=agent_definitions,
         max_turns=max_turns if max_turns is not None else AgentConfig().max_turns,
@@ -550,6 +555,7 @@ def _create_agent_options_impl(
         mcp_servers=mcp_servers,
         cwd=str(cwd),
         stderr=sdk_stderr_handler,  # 捕获 SDK 内部详细日志
+        output_format=output_format,  # 结构化输出 schema
     )
 
 
