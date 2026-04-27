@@ -265,12 +265,22 @@ async def run_observer_for_papers(
     # 调用 arxiv_observer agent
     result = await run_single_agent(prompt, "arxiv_observer")
 
-    # 解析响应
-    response_text = result.get("response", "")
-    logger.debug(f"[arxiv_observer] 响应长度: {len(response_text)} 字符")
-
-    # 解析推荐结果
-    recommended_indices = parse_papers_recommendation(response_text, len(papers))
+    # 优先使用 structured_output，否则 fallback 到 YAML 解析
+    structured_out = result.get("structured_output")
+    if structured_out and isinstance(structured_out, dict):
+        rec_list = structured_out.get("recommended", [])
+        if rec_list:
+            logger.info(f"[arxiv_observer] 使用 structured_output（{len(rec_list)} 篇推荐）")
+        recommended_indices = [
+            {"index": item.get("index", -1), "reason": item.get("reason", ""), "summary": item.get("summary", "")}
+            for item in rec_list
+            if isinstance(item, dict)
+        ]
+    else:
+        # fallback: 解析 YAML/文本
+        response_text = result.get("response", "")
+        logger.debug(f"[arxiv_observer] 响应长度: {len(response_text)} 字符")
+        recommended_indices = parse_papers_recommendation(response_text, len(papers))
 
     # 从原始论文数据中获取完整信息
     recommended_papers = []
@@ -347,12 +357,32 @@ async def run_pubmed_observer_for_papers(
     # 调用 pubmed_observer agent
     result = await run_single_agent(prompt, "pubmed_observer")
 
-    # 解析响应
-    response_text = result.get("response", "")
-    logger.debug(f"[pubmed_observer] 响应长度: {len(response_text)} 字符")
-
-    # 解析推荐结果
-    recommended_indices = parse_papers_recommendation(response_text, len(papers))
+    # 优先使用 structured_output，否则 fallback 到 YAML 解析
+    structured_out = result.get("structured_output")
+    if structured_out and isinstance(structured_out, dict):
+        rec_list = structured_out.get("recommended", [])
+        if rec_list:
+            logger.info(f"[pubmed_observer] 使用 structured_output（{len(rec_list)} 篇推荐）")
+        recommended_indices = [
+            {
+                "index": item.get("index", -1),
+                "reason": item.get("reason", ""),
+                "summary": item.get("summary", ""),
+                # PubMed 额外字段
+                "pmid": item.get("pmid", ""),
+                "doi": item.get("doi", ""),
+                "url": item.get("url", ""),
+                "journal": item.get("journal", ""),
+                "authors": item.get("authors", ""),
+            }
+            for item in rec_list
+            if isinstance(item, dict)
+        ]
+    else:
+        # fallback: 解析 YAML/文本
+        response_text = result.get("response", "")
+        logger.debug(f"[pubmed_observer] 响应长度: {len(response_text)} 字符")
+        recommended_indices = parse_papers_recommendation(response_text, len(papers))
 
     # 从原始文献数据中获取完整信息
     recommended_papers = []
@@ -364,6 +394,10 @@ async def run_pubmed_observer_for_papers(
             paper = papers[idx_value].copy()
             paper["reason"] = item.get("reason", "")
             paper["summary"] = item.get("summary", "")
+            # PubMed 额外字段（优先使用 structured_output 中的值）
+            for field in ("pmid", "doi", "url", "journal", "authors"):
+                if item.get(field):
+                    paper[field] = item[field]
             recommended_papers.append(paper)
 
     logger.info(f"[pubmed_observer] 推荐 {len(recommended_papers)} 篇文献")
