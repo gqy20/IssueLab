@@ -536,8 +536,13 @@ def _create_agent_options_impl(
     # 使用 SchemaRegistry 获取结构化输出 schema
     from issuelab.schemas import SchemaRegistry
 
-    # schema_name 优先（多阶段各阶段用专属 schema），否则默认 standard
-    effective_schema = schema_name if schema_name else "standard"
+    # schema_name 优先（多阶段各阶段用专属 schema），否则根据 agent_name 选择默认 schema
+    if schema_name:
+        effective_schema = schema_name
+    elif agent_name in {"arxiv_observer", "pubmed_observer"}:
+        effective_schema = agent_name  # observer agents 用各自专属 schema
+    else:
+        effective_schema = "standard"
     output_format = SchemaRegistry.get_sdk_format(effective_schema)
 
     return ClaudeAgentOptions(

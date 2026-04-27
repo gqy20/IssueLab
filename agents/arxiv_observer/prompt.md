@@ -37,21 +37,26 @@
 
 ## 输出格式（必须遵守）
 
-请只输出一个 `yaml` 代码块，包含以下字段：
+请严格按照以下 JSON Schema 输出：
 
-```yaml
-summary: "一句话总结本次筛选"
-recommended:
-  - index: 0
-    title: "论文标题"
-    reason: "推荐理由（简短）"
-    summary: "论文摘要或亮点（简短）"
+```json
+{
+  “summary”: “一句话总结本次筛选”,
+  “recommended”: [
+    {
+      “index”: 0,
+      “title”: “论文标题”,
+      “reason”: “推荐理由（简短）”,
+      “summary”: “论文摘要或亮点（简短）”
+    }
+  ]
+}
 ```
 
 要求：
 - `recommended` 必须存在，长度为 1-2
-- `index` 对应候选列表中的“论文 X”编号
-- 除上述 YAML 之外不要输出任何额外文本
+- `index` 对应候选列表中的”论文 X”编号
+- 除上述 JSON 之外不要输出任何额外文本
 
 ## 论文列表
 

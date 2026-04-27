@@ -35,6 +35,40 @@ class StandardOutput(BaseModel):
 
 
 # ============================================================
+# 论文推荐 Schema
+# ============================================================
+
+class PaperRecommendationItem(BaseModel):
+    """论文推荐项"""
+    index: int = Field(description="论文编号（对应候选列表中的编号）")
+    title: str = Field(default="", description="论文标题")
+    reason: str = Field(default="", description="推荐理由")
+    summary: str = Field(default="", description="论文摘要或亮点")
+
+
+class ArxivObserverOutput(BaseModel):
+    """Arxiv Observer 输出"""
+    summary: str = Field(description="一句话总结本次筛选")
+    recommended: list[PaperRecommendationItem] = Field(description="推荐论文列表")
+
+
+class PubmedRecommendationItem(PaperRecommendationItem):
+    """PubMed 推荐项（扩展字段）"""
+    pmid: str = Field(default="", description="PMID")
+    doi: str = Field(default="", description="DOI")
+    url: str = Field(default="", description="文献链接")
+    journal: str = Field(default="", description="期刊名称")
+    pubdate: str = Field(default="", description="发表日期")
+    authors: str = Field(default="", description="作者列表")
+
+
+class PubmedObserverOutput(BaseModel):
+    """PubMed Observer 输出"""
+    analysis: str = Field(description="本次筛选的分析说明")
+    recommended: list[PubmedRecommendationItem] = Field(description="推荐文献列表")
+
+
+# ============================================================
 # 多阶段 Schema
 # ============================================================
 
@@ -121,6 +155,8 @@ class SchemaRegistry:
         "critic": CriticStageOutput,
         "verifier": VerifierStageOutput,
         "judge": JudgeStageOutput,
+        "arxiv_observer": ArxivObserverOutput,
+        "pubmed_observer": PubmedObserverOutput,
     }
 
     @classmethod
