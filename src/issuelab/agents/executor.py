@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import json
 import os
 import re
 import sys
@@ -399,34 +400,6 @@ def _extract_sources_from_yaml(text: str) -> list[str]:
     return deduped
 
 
-def _validate_researcher_stage_output(text: str) -> tuple[bool, str]:
-    yaml_text = extract_yaml_block(text)
-    if not yaml_text:
-        return False, "缺少 YAML 输出块"
-
-    try:
-        parsed = yaml.safe_load(yaml_text)
-    except Exception as exc:
-        return False, f"YAML 解析失败: {exc}"
-
-    if not isinstance(parsed, dict):
-        return False, "YAML 根节点必须为对象"
-
-    evidence = parsed.get("evidence")
-    if not isinstance(evidence, list) or len(evidence) == 0:
-        return False, "Researcher 输出缺少 evidence 列表"
-
-    has_url = False
-    for item in evidence:
-        if isinstance(item, dict) and str(item.get("url", "")).startswith(("http://", "https://")):
-            has_url = True
-            break
-    if not has_url:
-        return False, "Researcher evidence 中缺少可追溯 URL"
-
-    return True, ""
-
-
 def _collect_source_urls(text: str) -> list[str]:
     """优先从 YAML sources 收集，否则回退为全文 URL。"""
     from_yaml = _extract_sources_from_yaml(text)
@@ -523,21 +496,14 @@ async def _run_gqy20_multistage(agent_prompt: str, issue_number: int, task_conte
                 "error_type": str(result.get("error_type") or "unknown"),
                 "error_message": str(result.get("error_message") or f"{stage_name} 执行失败"),
                 "response": text,
+                "structured_output": result.get("structured_output"),
             }
-        if stage_name == "Researcher":
-            valid, message = _validate_researcher_stage_output(text)
-            if not valid:
-                return {
-                    "ok": False,
-                    "error_type": "invalid_output",
-                    "error_message": message,
-                    "response": text,
-                }
         return {
             "ok": True,
             "error_type": None,
             "error_message": None,
             "response": text,
+            "structured_output": result.get("structured_output"),
         }
 
     researcher_task = f"""
@@ -619,36 +585,16 @@ confidence: "low|medium|high"
             str(research_stage.get("error_type") or "unknown"),
             str(research_stage.get("error_message") or "Researcher 阶段失败"),
         )
+    research_structured = research_stage.get("structured_output")
     research_text = str(research_stage.get("response", ""))
+
+    analyst_context = json.dumps(research_structured, ensure_ascii=False, indent=2) if research_structured else research_text
 
     analyst_task = f"""
 基于 Researcher 证据，产出 2-3 个候选结论版本（不要最终定稿）。
 
-Researcher 输出：
-{research_text}
-
-输出要求（YAML）：
-```yaml
-summary: ""
-candidates:
-  - id: "A"
-    summary: ""
-    findings:
-      - ""
-    recommendations:
-      - ""
-    sources:
-      - ""
-  - id: "B"
-    summary: ""
-    findings:
-      - ""
-    recommendations:
-      - ""
-    sources:
-      - ""
-confidence: "low|medium|high"
-```
+Researcher 结构化输出：
+{analyst_context}
 """
     analyst_stage = await _run_stage("Analyst", analyst_task)
     if not analyst_stage["ok"]:
@@ -657,28 +603,20 @@ confidence: "low|medium|high"
             str(analyst_stage.get("error_type") or "unknown"),
             str(analyst_stage.get("error_message") or "Analyst 阶段失败"),
         )
+    analyst_structured = analyst_stage.get("structured_output")
     analyst_text = str(analyst_stage.get("response", ""))
+
+    critic_context_research = json.dumps(research_structured, ensure_ascii=False, indent=2) if research_structured else research_text
+    critic_context_analyst = json.dumps(analyst_structured, ensure_ascii=False, indent=2) if analyst_structured else analyst_text
 
     critic_task = f"""
 逐条批判 Analyst 候选结论，识别逻辑漏洞、证据缺口、过度推断和缺失引用。
 
-Researcher 输出：
-{research_text}
+Researcher 结构化输出：
+{critic_context_research}
 
-Analyst 输出：
-{analyst_text}
-
-输出要求（YAML）：
-```yaml
-summary: ""
-criticisms:
-  - candidate_id: "A"
-    issues:
-      - ""
-    missing_evidence:
-      - ""
-confidence: "low|medium|high"
-```
+Analyst 结构化输出：
+{critic_context_analyst}
 """
     critic_stage = await _run_stage("Critic", critic_task)
     if not critic_stage["ok"]:
@@ -688,32 +626,24 @@ confidence: "low|medium|high"
             str(critic_stage.get("error_message") or "Critic 阶段失败"),
         )
     critic_text = str(critic_stage.get("response", ""))
+    critic_structured = critic_stage.get("structured_output")
+
+    verifier_context_research = json.dumps(research_structured, ensure_ascii=False, indent=2) if research_structured else research_text
+    verifier_context_analyst = json.dumps(analyst_structured, ensure_ascii=False, indent=2) if analyst_structured else analyst_text
+    verifier_context_critic = json.dumps(critic_structured, ensure_ascii=False, indent=2) if critic_structured else critic_text
 
     verifier_task = f"""
 强制核验候选结论的来源链接与证据一致性。
 要求尽可能调用工具验证链接是否可访问、内容是否支持对应结论。
 
-Researcher 输出：
-{research_text}
+Researcher 结构化输出：
+{verifier_context_research}
 
-Analyst 输出：
-{analyst_text}
+Analyst 结构化输出：
+{verifier_context_analyst}
 
-Critic 输出：
-{critic_text}
-
-输出要求（YAML）：
-```yaml
-summary: ""
-verified_sources:
-  - url: ""
-    status: "verified|partially_verified|unverified"
-    supports:
-      - ""
-verification_gaps:
-  - ""
-confidence: "low|medium|high"
-```
+Critic 结构化输出：
+{verifier_context_critic}
 """
     verifier_stage = await _run_stage("Verifier", verifier_task)
     if not verifier_stage["ok"]:
@@ -722,7 +652,13 @@ confidence: "low|medium|high"
             str(verifier_stage.get("error_type") or "unknown"),
             str(verifier_stage.get("error_message") or "Verifier 阶段失败"),
         )
+    verifier_structured = verifier_stage.get("structured_output")
     verifier_text = str(verifier_stage.get("response", ""))
+
+    judge_context_research = json.dumps(research_structured, ensure_ascii=False, indent=2) if research_structured else research_text
+    judge_context_analyst = json.dumps(analyst_structured, ensure_ascii=False, indent=2) if analyst_structured else analyst_text
+    judge_context_critic = json.dumps(critic_structured, ensure_ascii=False, indent=2) if critic_structured else critic_text
+    judge_context_verifier = json.dumps(verifier_structured, ensure_ascii=False, indent=2) if verifier_structured else verifier_text
 
     judge_base_task = f"""
 请综合 Researcher/Analyst/Critic/Verifier 结果，给出最终结论。
@@ -732,17 +668,17 @@ confidence: "low|medium|high"
 - 必须输出可追溯链接（sources）
 - 对不确定项明确标注
 
-Researcher 输出：
-{research_text}
+Researcher 结构化输出：
+{judge_context_research}
 
-Analyst 输出：
-{analyst_text}
+Analyst 结构化输出：
+{judge_context_analyst}
 
-Critic 输出：
-{critic_text}
+Critic 结构化输出：
+{judge_context_critic}
 
-Verifier 输出：
-{verifier_text}
+Verifier 结构化输出：
+{judge_context_verifier}
 
 最终输出格式：
 - [Agent: gqy20]

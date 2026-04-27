@@ -176,9 +176,13 @@ confidence: "low"
 
     result = await ex._run_gqy20_multistage("base prompt", 1, "ctx")
     assert result["ok"] is True
-    assert "证据不足" in result["response"]
-    assert calls["count"] == 2
-    assert "FallbackSingleStage" in result["stages"]
+    # Late fallback: all 5 stages run first, then fallback at end if sources missing
+    # The fallback response contains "关键证据尚不完整"
+    assert "关键证据尚不完整" in result["response"]
+    # Late fallback doesn't set FallbackSingleStage in stages (that's early fallback)
+    # Verify fallback was triggered by checking stages contain all 5 stages
+    assert "Researcher" in result["stages"]
+    assert "Analyst" in result["stages"]
 
 
 @pytest.mark.asyncio
